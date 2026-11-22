@@ -2,769 +2,266 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>แบบจำลอง 3 มิติและคู่มือสร้างทีละขั้น: เครื่องอบลดกลิ่นรองเท้าแบบมีที่ครอบ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>แบบจำลอง 3 มิติสมจริง: เครื่องอบและลดกลิ่นอับรองเท้าอัจฉริยะ (IoT Shoe Dryer)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <style>
-    /* =====================================================================
-       1. DESIGN SYSTEM & LAYOUT (BRIGHT ENGINEERING STUDIO, ZERO CDN)
-       ===================================================================== */
-    :root {
-      --bg-top: #eef4fb;
-      --bg-bottom: #dce7f5;
-      --panel-bg: rgba(255, 255, 255, 0.94);
-      --panel-soft: #f1f5f9;
-      --ink-main: #0f172a;
-      --ink-sub: #475569;
-      --ink-muted: #64748b;
-      --line: rgba(15, 23, 42, 0.12);
-      --line-strong: rgba(2, 132, 199, 0.45);
-      --brand: #0284c7;
-      --brand-deep: #0369a1;
-      --amber: #d97706;
-      --amber-soft: #fef3c7;
-      --violet: #7c3aed;
-      --violet-soft: #ede9fe;
-      --cyan: #0891b2;
-      --cyan-soft: #cffafe;
-      --emerald: #059669;
-      --emerald-soft: #d1fae5;
-      --rose: #e11d48;
-      --rose-soft: #ffe4e6;
-      --shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
-      --radius-xl: 18px;
-      --radius-lg: 14px;
-      --radius-md: 10px;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap');
 
     * {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
       -webkit-tap-highlight-color: transparent;
     }
 
     html, body {
       width: 100%;
       height: 100%;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
-      background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
-      color: var(--ink-main);
-      font-family: "Noto Sans Thai", "Sarabun", "Leelawadee UI", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: 'Noto Sans Thai', 'Inter', system-ui, sans-serif;
+      background: #0f172a;
       user-select: none;
     }
 
-    #scene-canvas {
+    #webgl-container {
       position: fixed;
       inset: 0;
       width: 100%;
       height: 100%;
-      display: block;
       z-index: 1;
       touch-action: none;
-      cursor: grab;
     }
 
-    #scene-canvas.dragging {
-      cursor: grabbing;
+    /* Glassmorphic HUD Styling */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      box-shadow: 0 18px 40px rgba(2, 6, 23, 0.45);
     }
 
-    .card {
-      background: var(--panel-bg);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow);
+    .glass-sub {
+      background: rgba(30, 41, 59, 0.65);
+      border: 1px solid rgba(148, 163, 184, 0.16);
     }
 
-    /* Top Header & Camera Preset Bar */
-    .top-header {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      z-index: 25;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      pointer-events: none;
+    /* Custom Scrollbar for HUD panels */
+    .custom-scroll::-webkit-scrollbar {
+      width: 5px;
     }
-
-    .title-pill {
-      pointer-events: auto;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 14px;
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
     }
-
-    .badge-3d {
-      width: 36px;
-      height: 36px;
-      border-radius: 11px;
-      background: linear-gradient(135deg, #0284c7, #0ea5e9);
-      color: #ffffff;
-      font-weight: 800;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .title-text {
-      font-size: 14.5px;
-      font-weight: 800;
-      line-height: 1.2;
-      color: var(--ink-main);
-    }
-
-    .sub-text {
-      font-size: 11px;
-      color: var(--ink-sub);
-      line-height: 1.25;
-      margin-top: 2px;
-    }
-
-    .cam-presets {
-      pointer-events: auto;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 5px;
-      padding: 6px 8px;
-    }
-
-    .btn {
-      border: 1px solid var(--line);
-      background: #ffffff;
-      color: var(--ink-main);
-      border-radius: var(--radius-md);
-      padding: 7px 11px;
-      font-family: inherit;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform 0.08s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-    }
-
-    .btn:hover {
-      background: #f8fafc;
-      border-color: rgba(2, 132, 199, 0.45);
-    }
-
-    .btn:active {
-      transform: scale(0.97);
-    }
-
-    .btn-xs {
-      padding: 5px 8px;
-      font-size: 11px;
-      border-radius: 8px;
-    }
-
-    .btn.active-cam,
-    .btn.active-step {
-      background: var(--brand);
-      border-color: var(--brand-deep);
-      color: #ffffff;
-    }
-
-    .btn-primary {
-      background: var(--brand);
-      border-color: var(--brand-deep);
-      color: #ffffff;
-    }
-
-    .btn-primary:hover {
-      background: var(--brand-deep);
-    }
-
-    .btn-emerald {
-      background: var(--emerald);
-      border-color: #047857;
-      color: #ffffff;
-    }
-
-    .btn-amber {
-      background: var(--amber);
-      border-color: #b45309;
-      color: #ffffff;
-    }
-
-    .safety-badge {
-      pointer-events: auto;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 13px;
-      font-size: 12px;
-      font-weight: 700;
-      border-radius: var(--radius-xl);
-    }
-
-    .safety-badge.ok {
-      background: var(--emerald-soft);
-      border-color: rgba(5, 150, 105, 0.4);
-      color: #065f46;
-    }
-
-    .safety-badge.warn {
-      background: var(--rose-soft);
-      border-color: rgba(225, 29, 72, 0.45);
-      color: #9f1239;
-    }
-
-    .dot-indicator {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: var(--emerald);
-      flex-shrink: 0;
-    }
-
-    .safety-badge.warn .dot-indicator {
-      background: var(--rose);
-    }
-
-    /* Left Dock: Step-by-Step Build & Controls */
-    .left-dock {
-      position: fixed;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-      z-index: 20;
-      display: flex;
-      flex-direction: column;
-      gap: 9px;
-      max-height: 46vh;
-      overflow-y: auto;
-      pointer-events: none;
-    }
-
-    @media (min-width: 1024px) {
-      .left-dock {
-        top: 66px;
-        bottom: 12px;
-        left: 10px;
-        right: auto;
-        width: 368px;
-        max-height: calc(100vh - 78px);
-      }
-    }
-
-    .left-dock::-webkit-scrollbar,
-    .right-dock::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .left-dock::-webkit-scrollbar-thumb,
-    .right-dock::-webkit-scrollbar-thumb {
-      background: rgba(100, 116, 139, 0.35);
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.35);
       border-radius: 999px;
     }
 
-    .panel {
-      pointer-events: auto;
-      padding: 13px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .panel-title {
-      font-size: 12px;
-      font-weight: 800;
-      color: var(--brand-deep);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--line);
-      padding-bottom: 6px;
-    }
-
-    /* Step Selector Grid (Steps 1-6) */
-    .step-grid {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 5px;
-    }
-
-    .step-num-btn {
-      padding: 7px 4px;
-      font-size: 12px;
-      font-weight: 800;
-      border-radius: 9px;
-    }
-
-    .step-card-box {
-      background: var(--panel-soft);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      padding: 10px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .step-heading {
-      font-size: 13px;
-      font-weight: 800;
-      color: var(--ink-main);
-    }
-
-    .step-desc {
-      font-size: 12px;
-      color: var(--ink-sub);
-      line-height: 1.45;
-    }
-
-    .step-meta {
-      font-size: 11px;
-      line-height: 1.4;
-      background: #ffffff;
-      border: 1px solid var(--line);
-      border-radius: 9px;
-      padding: 7px 9px;
-    }
-
-    .step-nav-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-    }
-
-    /* Cover, Cutaway, Explode & Simulation */
-    .row-flex {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .toggle-chip-group {
-      display: flex;
-      gap: 5px;
-      flex-wrap: wrap;
-    }
-
-    input[type="range"].slider {
+    /* Range Slider */
+    input[type="range"].studio-slider {
       -webkit-appearance: none;
       appearance: none;
       width: 100%;
-      height: 8px;
+      height: 6px;
       border-radius: 999px;
-      background: #cbd5e1;
+      background: rgba(71, 85, 105, 0.7);
       outline: none;
-      cursor: pointer;
     }
-
-    input[type="range"].slider::-webkit-slider-thumb {
+    input[type="range"].studio-slider::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       border-radius: 50%;
-      background: var(--brand);
-      border: 2px solid #ffffff;
-      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.45);
+      background: #38bdf8;
+      border: 2px solid #f8fafc;
       cursor: pointer;
-    }
-
-    input[type="range"].slider::-moz-range-thumb {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: var(--brand);
-      border: 2px solid #ffffff;
-      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.45);
-      cursor: pointer;
-    }
-
-    .mode-stack {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .mode-row-btn {
-      width: 100%;
-      justify-content: space-between;
-      padding: 8px 11px;
-      border-radius: var(--radius-md);
-    }
-
-    .mode-row-btn.on-heater {
-      background: var(--amber-soft);
-      border-color: var(--amber);
-      color: #78350f;
-    }
-
-    .mode-row-btn.on-uv {
-      background: var(--violet-soft);
-      border-color: var(--violet);
-      color: #4c1d95;
-    }
-
-    .mode-row-btn.on-mist {
-      background: var(--cyan-soft);
-      border-color: var(--cyan);
-      color: #155e75;
-    }
-
-    .state-tag {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 10px;
-      font-weight: 800;
-      padding: 2px 7px;
-      border-radius: 6px;
-      background: #e2e8f0;
-      color: var(--ink-sub);
-    }
-
-    .on-heater .state-tag { background: var(--amber); color: #ffffff; }
-    .on-uv .state-tag { background: var(--violet); color: #ffffff; }
-    .on-mist .state-tag { background: var(--cyan); color: #ffffff; }
-
-    /* Timer Box */
-    .timer-card {
-      background: var(--panel-soft);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      padding: 9px 11px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .timer-readout {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 21px;
-      font-weight: 800;
-      color: var(--brand-deep);
-      letter-spacing: 0.05em;
-    }
-
-    .bar-bg {
-      width: 100%;
-      height: 8px;
-      border-radius: 999px;
-      background: #cbd5e1;
-      overflow: hidden;
-    }
-
-    .bar-fg {
-      height: 100%;
-      width: 100%;
-      background: linear-gradient(90deg, #0284c7, #d97706, #7c3aed);
-      transition: width 0.2s linear;
-    }
-
-    .preset-5 {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 4px;
-    }
-
-    .preset-5 .btn {
-      padding: 6px 2px;
-      font-size: 11px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    }
-
-    .preset-5 .btn.picked {
-      background: #e0f2fe;
-      border-color: var(--brand);
-      color: var(--brand-deep);
-    }
-
-    .auto-check {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      background: #f8fafc;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      padding: 8px 10px;
-      cursor: pointer;
-      font-size: 11.5px;
-      line-height: 1.35;
-    }
-
-    .auto-check input {
-      margin-top: 2px;
-      width: 15px;
-      height: 15px;
-      accent-color: var(--brand);
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-
-    /* Right Dock: Part Chips + Part Inspector */
-    .right-dock {
-      position: fixed;
-      top: 66px;
-      right: 10px;
-      width: 325px;
-      max-height: calc(100vh - 78px);
-      overflow-y: auto;
-      z-index: 20;
-      display: none;
-      flex-direction: column;
-      gap: 9px;
-      pointer-events: none;
-    }
-
-    @media (min-width: 1024px) {
-      .right-dock.open-desktop {
-        display: flex;
-      }
-    }
-
-    .right-dock.open-mobile {
-      display: flex;
-      top: 108px;
-      left: 10px;
-      right: 10px;
-      width: auto;
-      max-height: 36vh;
-      z-index: 30;
-    }
-
-    .right-dock .panel {
-      pointer-events: auto;
-    }
-
-    .chip-wrap {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-    }
-
-    .part-chip {
-      border: 1px solid var(--line);
-      background: #f8fafc;
-      color: var(--ink-main);
-      border-radius: 999px;
-      padding: 4px 10px;
-      font-size: 11px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .part-chip.selected-chip {
-      background: var(--brand);
-      border-color: var(--brand-deep);
-      color: #ffffff;
-    }
-
-    .spec-box {
-      background: var(--panel-soft);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      padding: 8px 10px;
-      font-size: 12px;
-      line-height: 1.42;
-    }
-
-    .spec-label {
-      font-size: 10.5px;
-      font-weight: 800;
-      margin-bottom: 2px;
-    }
-
-    .toast-banner {
-      position: fixed;
-      top: 68px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 50;
-      background: #0f172a;
-      color: #ffffff;
-      border: 1px solid rgba(56, 189, 248, 0.7);
-      padding: 8px 16px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.28);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-      max-width: 92vw;
-      text-align: center;
-    }
-
-    .toast-banner.show {
-      opacity: 1;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
     }
   </style>
 </head>
-<body>
-  <canvas id="scene-canvas" aria-label="แบบจำลอง 3 มิติ เครื่องอบลดกลิ่นรองเท้าแบบมีที่ครอบ"></canvas>
+<body class="text-slate-100">
 
-  <!-- Top Header & Camera Presets -->
-  <header class="top-header">
-    <div class="card title-pill">
-      <div class="badge-3d">3D</div>
+  <!-- 3D WebGL Viewport -->
+  <div id="webgl-container" aria-label="แบบจำลอง 3 มิติสมจริง เครื่องอบลดกลิ่นรองเท้า"></div>
+
+  <!-- Top Bar: Title, Camera Presets, Safety Interlock Pill -->
+  <header class="fixed top-3 left-3 right-3 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+    <!-- Brand / Title Card -->
+    <div class="glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-3 pointer-events-auto">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center font-extrabold text-white text-xs shadow-lg shadow-sky-500/30 shrink-0">
+        3D PBR
+      </div>
       <div>
-        <div class="title-text">เครื่องอบลดกลิ่นรองเท้าแบบมีที่ครอบ</div>
-        <div class="sub-text">ลากหมุนมุมมอง • เลื่อนซูม • เลือกขั้นตอนสร้าง 1–6 หรือแตะชิ้นส่วน</div>
+        <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-white leading-tight">
+          เครื่องอบและลดกลิ่นอับรองเท้าอัจฉริยะ (IoT Shoe Dryer)
+        </h1>
+        <p class="text-[10px] sm:text-[11px] text-slate-300 leading-tight mt-0.5">
+          หมุน/ซูม 360° • แตะชิ้นส่วนเพื่อดูสเปก • จำลองการทำงานจริง
+        </p>
       </div>
     </div>
 
-    <div class="card cam-presets" role="group" aria-label="มุมกล้องด่วน">
-      <button type="button" data-cam="overview" class="btn btn-xs active-cam">มุมรวม</button>
-      <button type="button" data-cam="front" class="btn btn-xs">ด้านหน้า</button>
-      <button type="button" data-cam="cutaway" class="btn btn-xs">ผ่าครึ่ง/ตัดดูด้านใน</button>
-      <button type="button" data-cam="top" class="btn btn-xs">มุมบน</button>
-      <button id="btn-z-in" type="button" class="btn btn-xs" title="ซูมเข้า">+</button>
-      <button id="btn-z-out" type="button" class="btn btn-xs" title="ซูมออก">−</button>
+    <!-- Camera Presets -->
+    <div class="glass-panel rounded-2xl p-1.5 flex flex-wrap items-center gap-1 pointer-events-auto" role="group" aria-label="มุมกล้องด่วน">
+      <button type="button" data-cam="overview" class="cam-btn px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-sky-500 text-slate-950 transition">
+        มุมรวม (3/4)
+      </button>
+      <button type="button" data-cam="front" class="cam-btn px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-slate-200 hover:bg-slate-700/70 transition">
+        ด้านหน้า (Front)
+      </button>
+      <button type="button" data-cam="cutaway" class="cam-btn px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-slate-200 hover:bg-slate-700/70 transition">
+        ผ่าครึ่งดูวงจร (Cutaway)
+      </button>
+      <button type="button" data-cam="top" class="cam-btn px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-slate-200 hover:bg-slate-700/70 transition">
+        มุมบน (Top)
+      </button>
     </div>
 
-    <div id="safety-badge" class="card safety-badge ok">
-      <span class="dot-indicator"></span>
-      <span id="safety-label">ฝาครอบปิดสนิท • นิรภัยพร้อม</span>
+    <!-- Safety Interlock Status Badge -->
+    <div id="safety-pill" class="glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-2 text-xs font-bold border-emerald-400/40 bg-emerald-950/75 text-emerald-200 pointer-events-auto transition-all">
+      <span id="safety-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span id="safety-text">ฝาครอบปิดสนิท • สวิตช์นิรภัยพร้อม</span>
     </div>
   </header>
 
-  <div id="toast-banner" class="toast-banner" role="status" aria-live="polite"></div>
+  <!-- Toast Notification Banner -->
+  <div id="toast-msg" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-slate-900/95 border border-sky-400/60 text-sky-100 text-xs font-semibold shadow-2xl opacity-0 pointer-events-none transition-opacity duration-200 text-center max-w-[92vw]"></div>
 
-  <!-- Left Dock: Step-by-Step Build Guide + Controls + Timer -->
-  <aside class="left-dock">
-    <!-- Step-by-Step Builder -->
-    <section class="card panel">
-      <div class="panel-title">
-        <span>วิธีทำตามได้จริง (ขั้นตอนที่ 1–6)</span>
-        <span id="step-counter" style="font-family:monospace; font-size:11px;">1 / 6</span>
+  <!-- Mobile HUD Collapse Toggle -->
+  <button id="btn-toggle-hud" type="button" class="fixed bottom-3 right-3 z-30 lg:hidden glass-panel rounded-full px-4 py-2.5 text-xs font-extrabold text-sky-300 border-sky-400/40 flex items-center gap-2 shadow-xl">
+    <span id="hud-toggle-icon">▼</span>
+    <span id="hud-toggle-label">ซ่อนแผงควบคุม</span>
+  </button>
+
+  <!-- Left Dock: Operational Controls & 6-Step Assembly Guide -->
+  <aside id="left-hud" class="fixed left-3 right-3 bottom-14 lg:bottom-3 lg:top-16 lg:right-auto lg:w-[375px] z-20 flex flex-col gap-2.5 max-h-[48vh] lg:max-h-[calc(100vh-5rem)] overflow-y-auto custom-scroll pointer-events-none transition-all duration-200">
+    
+    <!-- Panel 1: Simulation & Operational Controls -->
+    <section class="glass-panel rounded-2xl p-3.5 flex flex-col gap-3 pointer-events-auto">
+      <div class="flex items-center justify-between border-b border-slate-700/80 pb-2">
+        <span class="text-xs font-extrabold text-sky-300 tracking-wide">แผงควบคุมจำลองการทำงาน (Simulation)</span>
+        <span id="live-telemetry" class="font-mono text-[11px] font-bold text-amber-300 bg-slate-900/80 px-2 py-0.5 rounded-md border border-slate-700">
+          28.5°C • 68% RH
+        </span>
       </div>
 
-      <div class="step-grid" role="group" aria-label="เลือกขั้นตอนการสร้าง">
-        <button type="button" data-step="1" class="btn step-num-btn active-step">1</button>
-        <button type="button" data-step="2" class="btn step-num-btn">2</button>
-        <button type="button" data-step="3" class="btn step-num-btn">3</button>
-        <button type="button" data-step="4" class="btn step-num-btn">4</button>
-        <button type="button" data-step="5" class="btn step-num-btn">5</button>
-        <button type="button" data-step="6" class="btn step-num-btn">6</button>
+      <!-- Primary Power & Cover / Cutaway Row -->
+      <div class="grid grid-cols-3 gap-1.5">
+        <button id="btn-power" type="button" class="col-span-1 py-2 px-2 rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition">
+          ▶ เริ่มอบอัตโนมัติ
+        </button>
+        <button id="btn-cover" type="button" class="py-2 px-2 rounded-xl text-xs font-bold glass-sub hover:bg-slate-700/80 text-slate-100 transition">
+          เปิดฝาครอบ
+        </button>
+        <button id="btn-cutaway" type="button" class="py-2 px-2 rounded-xl text-xs font-bold glass-sub hover:bg-slate-700/80 text-slate-100 transition">
+          ผ่าดูวงจรฐาน
+        </button>
       </div>
 
-      <div id="step-card" class="step-card-box">
-        <div id="step-title" class="step-heading">ขั้นตอนที่ 1: เตรียมฐานกล่องควบคุมและเจาะช่อง</div>
-        <div id="step-desc" class="step-desc"></div>
-        <div id="step-tools" class="step-meta"></div>
-        <div id="step-safety" class="step-meta" style="border-color:rgba(217,119,6,0.35); background:#fffbeb;"></div>
+      <!-- Individual Subsystem Toggles -->
+      <div class="grid grid-cols-3 gap-1.5">
+        <button id="btn-heater" type="button" class="py-1.5 px-2 rounded-xl text-[11px] font-bold glass-sub text-slate-200 flex flex-col items-center gap-0.5 transition">
+          <span>ฮีตเตอร์ PTC</span>
+          <span id="badge-heater" class="text-[10px] font-mono px-1.5 rounded bg-slate-800 text-slate-400">OFF</span>
+        </button>
+        <button id="btn-uv" type="button" class="py-1.5 px-2 rounded-xl text-[11px] font-bold glass-sub text-slate-200 flex flex-col items-center gap-0.5 transition">
+          <span>หลอด UV-C</span>
+          <span id="badge-uv" class="text-[10px] font-mono px-1.5 rounded bg-slate-800 text-slate-400">OFF</span>
+        </button>
+        <button id="btn-mist" type="button" class="py-1.5 px-2 rounded-xl text-[11px] font-bold glass-sub text-slate-200 flex flex-col items-center gap-0.5 transition">
+          <span>พ่นน้ำหอม</span>
+          <span id="badge-mist" class="text-[10px] font-mono px-1.5 rounded bg-slate-800 text-slate-400">OFF</span>
+        </button>
       </div>
 
-      <div class="step-nav-row">
-        <button id="btn-step-prev" type="button" class="btn btn-xs">← ขั้นก่อนหน้า</button>
-        <button id="btn-step-next" type="button" class="btn btn-xs btn-primary">ขั้นตอนถัดไป →</button>
+      <!-- Timer & Simulation Speed -->
+      <div class="glass-sub rounded-xl p-2.5 flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-300">เวลาอบคงเหลือ &amp; โหมดลำดับขั้น</div>
+            <div id="cycle-status" class="text-[11px] font-semibold text-sky-300">พร้อมทำงาน (Standby)</div>
+          </div>
+          <div id="timer-display" class="font-mono text-xl font-extrabold text-white tracking-wider">
+            30:00
+          </div>
+        </div>
+
+        <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div id="timer-progress" class="h-full bg-gradient-to-r from-sky-400 via-amber-400 to-violet-500 w-full transition-all duration-150"></div>
+        </div>
+
+        <div class="flex items-center justify-between gap-1.5 pt-0.5">
+          <div class="flex items-center gap-1">
+            <button type="button" data-mins="15" class="preset-min-btn px-2 py-1 rounded-lg text-[11px] font-mono font-bold glass-sub hover:bg-slate-700">15น.</button>
+            <button type="button" data-mins="30" class="preset-min-btn px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-sky-500/25 border border-sky-400 text-sky-200">30น.</button>
+            <button type="button" data-mins="60" class="preset-min-btn px-2 py-1 rounded-lg text-[11px] font-mono font-bold glass-sub hover:bg-slate-700">60น.</button>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="text-[10px] text-slate-400">ความเร็ว:</span>
+            <button type="button" data-speed="1" class="speed-btn px-1.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/25 border border-amber-400 text-amber-200">1x</button>
+            <button type="button" data-speed="10" class="speed-btn px-1.5 py-1 rounded-lg text-[10px] font-mono font-bold glass-sub hover:bg-slate-700">10x</button>
+            <button type="button" data-speed="60" class="speed-btn px-1.5 py-1 rounded-lg text-[10px] font-mono font-bold glass-sub hover:bg-slate-700">60x</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exploded View Slider -->
+      <div>
+        <div class="flex items-center justify-between text-[11px] mb-1">
+          <span class="font-bold text-slate-300">แยกชิ้นส่วนดูโครงสร้าง (Exploded View)</span>
+          <span id="explode-label" class="font-mono font-bold text-sky-300">0%</span>
+        </div>
+        <input id="explode-range" type="range" min="0" max="100" value="0" class="studio-slider" />
       </div>
     </section>
 
-    <!-- Model Controls, Simulation & Timer -->
-    <section class="card panel">
-      <div class="panel-title">
-        <span>แผงจำลองการทำงานและตั้งเวลา</span>
-        <span id="sensor-readout" style="font-family:monospace; font-size:11px; color:var(--ink-sub);">28.5°C • 68%</span>
+    <!-- Panel 2: 6-Step Interactive Assembly & Component Guide -->
+    <section class="glass-panel rounded-2xl p-3.5 flex flex-col gap-2.5 pointer-events-auto">
+      <div class="flex items-center justify-between border-b border-slate-700/80 pb-1.5">
+        <span class="text-xs font-extrabold text-amber-300">คู่มือประกอบ &amp; โครงสร้าง 6 ขั้นตอน</span>
+        <span id="step-indicator" class="font-mono text-[11px] text-slate-300">ขั้นที่ 1 / 6</span>
       </div>
 
-      <div class="row-flex">
-        <div>
-          <div style="font-size:12.5px; font-weight:700;">ฝาครอบใส &amp; มุมมองผ่า</div>
-          <div class="sub-text">เปิดฝาจะตัดไฟ UV-C และพ่นน้ำหอมทันที</div>
-        </div>
-        <div class="toggle-chip-group">
-          <button id="btn-cover" type="button" class="btn btn-xs btn-primary">เปิดฝาครอบ</button>
-          <button id="btn-cutaway" type="button" class="btn btn-xs">โหมดผ่าดูใน</button>
-        </div>
+      <div class="grid grid-cols-6 gap-1" role="group" aria-label="เลือกขั้นตอนการประกอบ">
+        <button type="button" data-step="1" class="step-btn py-1.5 rounded-lg text-xs font-extrabold bg-sky-500 text-slate-950">1</button>
+        <button type="button" data-step="2" class="step-btn py-1.5 rounded-lg text-xs font-extrabold glass-sub text-slate-200">2</button>
+        <button type="button" data-step="3" class="step-btn py-1.5 rounded-lg text-xs font-extrabold glass-sub text-slate-200">3</button>
+        <button type="button" data-step="4" class="step-btn py-1.5 rounded-lg text-xs font-extrabold glass-sub text-slate-200">4</button>
+        <button type="button" data-step="5" class="step-btn py-1.5 rounded-lg text-xs font-extrabold glass-sub text-slate-200">5</button>
+        <button type="button" data-step="6" class="step-btn py-1.5 rounded-lg text-xs font-extrabold glass-sub text-slate-200">6</button>
       </div>
 
-      <div>
-        <div class="row-flex" style="margin-bottom:4px;">
-          <label for="explode-slider" style="font-size:12px; font-weight:700;">ระยะแยกชิ้นส่วน (Exploded)</label>
-          <span id="explode-val" style="font-family:monospace; font-size:11.5px; font-weight:800; color:var(--brand-deep);">0%</span>
-        </div>
-        <input id="explode-slider" class="slider" type="range" min="0" max="100" value="0" />
+      <div class="glass-sub rounded-xl p-2.5 flex flex-col gap-1.5">
+        <div id="guide-title" class="text-xs font-extrabold text-white"></div>
+        <p id="guide-desc" class="text-[11.5px] text-slate-300 leading-relaxed"></p>
+        <div id="guide-hw" class="text-[11px] text-sky-200 bg-slate-900/70 rounded-lg px-2.5 py-1.5 border border-slate-700/70"></div>
       </div>
 
-      <div class="mode-stack">
-        <button id="btn-heater" type="button" class="btn mode-row-btn">
-          <span>ฮีตเตอร์ PTC 12V + พัดลมเป่าลมร้อน</span>
-          <span id="tag-heater" class="state-tag">OFF</span>
+      <div class="flex items-center justify-between gap-2">
+        <button id="btn-prev-step" type="button" class="px-3 py-1.5 rounded-xl text-[11px] font-bold glass-sub hover:bg-slate-700 text-slate-200">
+          ← ขั้นก่อนหน้า
         </button>
-        <button id="btn-uv" type="button" class="btn mode-row-btn">
-          <span>หลอดฆ่าเชื้อ UV-C 12V (ใต้ฝาครอบ)</span>
-          <span id="tag-uv" class="state-tag">OFF</span>
+        <button id="btn-next-step" type="button" class="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-sky-500 hover:bg-sky-400 text-slate-950">
+          ขั้นตอนถัดไป →
         </button>
-        <button id="btn-mist" type="button" class="btn mode-row-btn">
-          <span>พ่นละอองน้ำหอม / ดับกลิ่น 12V</span>
-          <span id="tag-mist" class="state-tag">OFF</span>
-        </button>
-      </div>
-
-      <!-- Timer -->
-      <div class="timer-card">
-        <div class="row-flex">
-          <span style="font-size:12px; font-weight:800;">ตัวตั้งเวลาอบ (Timer)</span>
-          <span id="seq-phase" style="font-size:11px; font-weight:700; color:var(--brand-deep);">พร้อมเริ่มรอบ</span>
-        </div>
-
-        <div class="row-flex">
-          <span id="timer-sub" class="sub-text" style="margin:0;">ตั้งไว้: 30 นาที</span>
-          <span id="timer-clock" class="timer-readout">30:00</span>
-        </div>
-
-        <div class="bar-bg">
-          <div id="timer-bar" class="bar-fg"></div>
-        </div>
-
-        <div class="row-flex" style="margin-top:2px;">
-          <button id="btn-t-minus" type="button" class="btn btn-xs">−5น.</button>
-          <button id="btn-t-plus" type="button" class="btn btn-xs">+5น.</button>
-          <button id="btn-t-start" type="button" class="btn btn-xs btn-primary" style="flex:1;">เริ่มตั้งเวลาอบ</button>
-          <button id="btn-t-reset" type="button" class="btn btn-xs">รีเซ็ต</button>
-        </div>
-
-        <div class="preset-5">
-          <button type="button" data-min="15" class="btn">15น.</button>
-          <button type="button" data-min="30" class="btn picked">30น.</button>
-          <button type="button" data-min="45" class="btn">45น.</button>
-          <button type="button" data-min="60" class="btn">60น.</button>
-          <button type="button" data-min="90" class="btn">90น.</button>
-        </div>
-
-        <label for="chk-auto-seq" class="auto-check">
-          <input id="chk-auto-seq" type="checkbox" checked />
-          <span>
-            <strong>ลำดับอัตโนมัติหลังอบเสร็จ:</strong> ครบเวลา → ปิดฮีตเตอร์ → ฆ่าเชื้อ UV-C → พ่นละอองน้ำหอม 2 วินาที (งดอัตโนมัติหากเปิดฝา)
-          </span>
-        </label>
       </div>
     </section>
   </aside>
 
-  <!-- Right Dock: Quick Part Chips + Detailed Inspector -->
-  <aside id="right-dock" class="right-dock open-desktop">
-    <section class="card panel">
-      <div class="panel-title">
-        <span>เลือกดูชิ้นส่วน (แตะบน 3D หรือปุ่ม)</span>
-        <button id="btn-hide-right" type="button" class="btn btn-xs">ซ่อน</button>
+  <!-- Right Dock: Interactive Component Inspector (Desktop + Tap-to-Open on Mobile) -->
+  <aside id="right-hud" class="fixed top-16 right-3 w-[320px] max-h-[calc(100vh-5rem)] overflow-y-auto custom-scroll z-20 hidden lg:flex flex-col gap-2.5 pointer-events-none">
+    <section class="glass-panel rounded-2xl p-3.5 flex flex-col gap-2.5 pointer-events-auto">
+      <div class="flex items-center justify-between border-b border-slate-700/80 pb-1.5">
+        <span class="text-xs font-extrabold text-sky-300">เจาะลึกชิ้นส่วน (แตะบน 3D หรือเลือก)</span>
+        <button id="btn-close-inspector" type="button" class="lg:hidden text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">ปิด</button>
       </div>
-      <div id="part-chips" class="chip-wrap"></div>
-    </section>
-
-    <section class="card panel">
-      <div class="panel-title">
-        <span id="insp-title">ฐานกล่องควบคุมและตัวถังล่าง</span>
-        <span id="insp-step-badge" style="font-size:10.5px; color:var(--brand-deep);">ขั้นที่ 1</span>
-      </div>
-      <div id="insp-content" style="display:flex; flex-direction:column; gap:7px;"></div>
+      <div id="part-selector-chips" class="flex flex-wrap gap-1"></div>
+      <div id="part-detail-card" class="glass-sub rounded-xl p-3 flex flex-col gap-2 text-xs"></div>
     </section>
   </aside>
 
@@ -773,1401 +270,1510 @@
       "use strict";
 
       /* =====================================================================
-         1. BUILD STEPS (1-6) & PART SPECIFICATIONS IN THAI
+         1. HARDWARE SPECIFICATIONS & 6-STEP BUILD GUIDE DATA (THAI)
          ===================================================================== */
       const BUILD_STEPS = [
         {
           step: 1,
-          short: "ขั้น 1: ฐานกล่อง",
-          title: "ขั้นตอนที่ 1: เตรียมฐานกล่องควบคุมและเจาะช่อง",
-          desc: "ใช้ฐานกล่องขนาด 35×28×10 ซม. แบ่งโซนซ้ายเป็นห้องลมร้อนและโซนขวาเป็นห้องวงจร/ปั๊ม เจาะช่องรับลมด้านข้าง ช่องฝังจอ OLED ด้านหน้า และช่องท่อลม 2 รูห่างกัน 15 ซม. บนฝาฐาน",
-          tools: "กล่องพลาสวูด/ABS 35×28×10 ซม., คัตเตอร์/สว่านเจาะรู, ไม้บรรทัด, ปากกามาร์กเกอร์",
-          safety: "เว้นระยะห่างช่องรับลมไม่ให้ถูกบัง และกั้นแผ่นพลาสวูดระหว่างโซนความร้อนกับโซนบอร์ดควบคุม",
-          highlightParts: ["base_box", "oled_display"],
-          camera: "front",
-          explodeTarget: 0.15,
-          coverOpenTarget: false,
-          cutawayTarget: true
+          title: "ขั้นที่ 1: ฐานกล่องควบคุม ABS/Plaswood และแผงหน้าปัด OLED",
+          desc: "ประกอบตัวถังฐานสีเทาเข้มด้าน (Matte Anthracite) ติดตั้งยางรองกันลื่น 4 มุม เจาะช่องระบายอากาศด้านข้าง และฝังแผงหน้าปัดเอียงพร้อมจอ OLED แสดงค่าอุณหภูมิ ความชื้น และเวลา",
+          hw: "ตัวถังฐาน ABS/Plaswood 35×28×10 ซม., จอ OLED 0.96\" I2C, ปุ่มกด Tactile, ไฟสถานะ LED",
+          cam: "front",
+          cutaway: false,
+          coverOpen: false,
+          explode: 0.0,
+          focusPart: "base_housing"
         },
         {
           step: 2,
-          short: "ขั้น 2: ฮีตเตอร์&วงจร",
-          title: "ขั้นตอนที่ 2: ติดตั้งฮีตเตอร์ PTC 12V, ESP32 และรีเลย์",
-          desc: "ยึดชุดฮีตเตอร์เซรามิก PTC 12V พร้อมพัดลมเป่าในโซนลมร้อนด้านซ้าย วางบอร์ด ESP32, โมดูลรีเลย์, เซ็นเซอร์ DHT22 และโมดูลลดแรงดัน LM2596 (12V→5V) ในโซนขวา แล้วเดินสายไฟให้เรียบร้อย",
-          tools: "ฮีตเตอร์ PTC 12V + พัดลม, บอร์ด ESP32, รีเลย์ 2–3 ช่อง, DHT22, อะแดปเตอร์ 12V 10A, ไขควง/เทปพันสายไฟ",
-          safety: "ใช้ไฟ 12V DC แทนไฟบ้าน 220V เพื่อความปลอดภัยของนักเรียน และหุ้มจุดต่อสายไฟด้วยฉนวนให้มิดชิด",
-          highlightParts: ["ptc_heater", "esp32_relay", "oled_display"],
-          camera: "cutaway",
-          explodeTarget: 0.1,
-          coverOpenTarget: false,
-          cutawayTarget: true
+          title: "ขั้นที่ 2: ติดตั้งสมองกล ESP32 และโมดูลรีเลย์ 2 ช่อง",
+          desc: "วางบอร์ด ESP32, โมดูลรีเลย์ 2 ช่อง (พร้อมไฟ LED แสดงสถานะการทำงาน), และวงจรแปลงไฟ 12V→5V ในห้องวงจรด้านขวา แยกผนังกั้นความร้อนออกจากโซนฮีตเตอร์อย่างชัดเจน",
+          hw: "บอร์ด ESP32 DevKit, โมดูลรีเลย์ 2-Channel 5V, อะแดปเตอร์ 12V 10A, แผ่นกั้นฉนวนกันความร้อน",
+          cam: "cutaway",
+          cutaway: true,
+          coverOpen: false,
+          explode: 0.08,
+          focusPart: "esp32_relay"
         },
         {
           step: 3,
-          short: "ขั้น 3: ท่อลม PVC",
-          title: "ขั้นตอนที่ 3: ติดตั้งท่อส่งลมร้อน PVC 2 ท่อ",
-          desc: "ตัดท่อน้ำทิ้ง PVC สีขาวขนาด ~1.5 นิ้ว ความยาวราว 15–18 ซม. จำนวน 2 ท่อน สวมเข้ากับช่องลมบนฝาฐานให้ตรงกับตำแหน่งเป่าเข้าด้านในรองเท้าทั้งซ้ายและขวา",
-          tools: "ท่อ PVC สีขาว Ø 1.5 นิ้ว (2 ท่อน), ข้อต่อ/หน้าแปลนยึด, กาวร้อนหรือกาวอีพ็อกซี่",
-          safety: "ยึดฐานท่อให้มั่นคงไม่เอียง เพื่อไม่ให้รองเท้าล้มทับหลอดไฟหรือหัวพ่นด้านบน",
-          highlightParts: ["pvc_nozzles", "base_box"],
-          camera: "overview",
-          explodeTarget: 0.35,
-          coverOpenTarget: true,
-          cutawayTarget: false
+          title: "ขั้นที่ 3: ชุดฮีตเตอร์เซรามิก PTC 12V 100W และพัดลมเป่าลมร้อน",
+          desc: "ยึดชุดฮีตเตอร์ PTC 12V 100W ครีบอลูมิเนียมคู่กับพัดลมระบายอากาศความเร็วสูงใต้ตะแกรงสเตนเลสเจาะรู เพื่อกระจายลมร้อนอุณหภูมิคงที่ ~48°C ขึ้นสู่รองเท้าทั้งสองข้าง",
+          hw: "ฮีตเตอร์เซรามิก PTC 12V 100W, พัดลม DC 12V, ตะแกรงวางรองเท้าสเตนเลสเจาะรู",
+          cam: "cutaway",
+          cutaway: true,
+          coverOpen: false,
+          explode: 0.25,
+          focusPart: "ptc_heater"
         },
         {
           step: 4,
-          short: "ขั้น 4: ฝาครอบ&UV-C",
-          title: "ขั้นตอนที่ 4: เตรียมฝาครอบใส ติดหลอด UV-C และสวิตช์นิรภัย",
-          desc: "เจาะรูระบายไอน้ำเล็กๆ ที่ด้านบนฝาครอบกล่องใส ยึดหลอดไฟ UV-C 12V ไว้ใต้ฝาด้านบน และติดไมโครสวิตช์ที่ขอบฝาเพื่อตัดไฟ UV-C ทันทีเมื่อเปิดฝาครอบ",
-          tools: "กล่องพลาสติกใส 35×28×30 ซม., หลอด UV-C 12V + ขั้ว, ไมโครสวิตช์ (Limit Switch), สว่านดอกเล็ก",
-          safety: "ห้ามมองแสง UV-C โดยตรง และตรวจสอบให้สวิตช์ตัดไฟทำงานได้จริงทุกครั้งก่อนทดสอบ",
-          highlightParts: ["cover_box", "uv_lamp"],
-          camera: "top",
-          explodeTarget: 0.65,
-          coverOpenTarget: true,
-          cutawayTarget: false
+          title: "ขั้นที่ 4: ตู้อบอะคริลิกใส ฝาเปิดบานพับ และสวิตช์นิรภัย (Limit Switch)",
+          desc: "ติดตั้งกล่องครอบอะคริลิกใสพร้อมซีลยางซิลิโคน ตัวล็อกด้านข้าง และไมโครสวิตช์ (Limit Switch) ที่ขอบฝา หากเปิดฝาครอบระบบจะตัดไฟฮีตเตอร์ หลอด UV-C และปั๊มน้ำหอมทันที",
+          hw: "ฝาครอบอะคริลิก/โพลีคาร์บอเนตใส, บานพับ, ซีลซิลิโคน, ตัวล็อกข้าง, ไมโครสวิตช์นิรภัย",
+          cam: "overview",
+          cutaway: false,
+          coverOpen: true,
+          explode: 0.45,
+          focusPart: "acrylic_cover"
         },
         {
           step: 5,
-          short: "ขั้น 5: ชุดพ่นน้ำหอม",
-          title: "ขั้นตอนที่ 5: ติดตั้งปั๊ม 12V ขวดสเปรย์ และหัวพ่นละอองฝอย",
-          desc: "วางขวดน้ำหอม/สเปรย์ดับกลิ่นสูตรน้ำและปั๊มจิ๋ว 12V แยกไว้ด้านข้าง ต่อสายยางซิลิโคนขึ้นไปที่หัวพ่นละอองฝอยด้านบน ตั้งให้พ่นเป็นละอองบางๆ หลังอบเสร็จ",
-          tools: "ปั๊มจิ๋ว 12V, ขวดสเปรย์สูตรน้ำ, สายยางซิลิโคน, หัวพ่นละอองฝอย (Mist Nozzle)",
-          safety: "ห้ามฉีดของเหลวใส่ฮีตเตอร์โดยตรง และควรพ่นช่วงสั้นๆ 1–3 วินาทีหลังปิดฮีตเตอร์แล้ว เพื่อไม่ให้รองเท้าชื้นกลับ",
-          highlightParts: ["perfume_pump", "mist_nozzle"],
-          camera: "cutaway",
-          explodeTarget: 0.25,
-          coverOpenTarget: false,
-          cutawayTarget: true
+          title: "ขั้นที่ 5: หลอดฆ่าเชื้อ UV-C Ozone 12V และเซ็นเซอร์ DHT22",
+          desc: "ยึดหลอดแก้วควอตซ์ UV-C 12V ไว้ที่โครงคานบนด้านในฝาครอบเพื่อฆ่าเชื้อแบคทีเรียและเชื้อรา พร้อมติดตั้งเซ็นเซอร์ DHT22 สีขาวบนผนังตู้เพื่อวัดอุณหภูมิและความชื้นแบบเรียลไทม์",
+          hw: "หลอด UV-C Ozone 12V (หลอดควอตซ์ + ขั้วกันความร้อน), เซ็นเซอร์ DHT22",
+          cam: "top",
+          cutaway: false,
+          coverOpen: false,
+          explode: 0.35,
+          focusPart: "uv_lamp"
         },
         {
           step: 6,
-          short: "ขั้น 6: ทดสอบรองเท้า",
-          title: "ขั้นตอนที่ 6: สวมรองเท้า ทดสอบตั้งเวลา และบันทึกผล",
-          desc: "สวมรองเท้าลงบนท่อ PVC ทั้งสองข้าง ปิดฝาครอบให้สนิท ตั้งเวลาอบ (เช่น 30 นาที) เปิดลำดับอัตโนมัติหลังอบเสร็จ แล้ววัดอุณหภูมิ ความชื้น กลิ่น และสภาพกาว/ทรงรองเท้า",
-          tools: "รองเท้าทดสอบ, นาฬิกาจับเวลา/เซ็นเซอร์ DHT22, ตารางบันทึกผลการทดลอง",
-          safety: "คุมอุณหภูมิไม่ให้เกิน ~50°C เพื่อถนอมกาวและวัสดุรองเท้า และถอดปลั๊กเมื่อเลิกใช้งาน",
-          highlightParts: ["sneakers", "pvc_nozzles", "cover_box"],
-          camera: "overview",
-          explodeTarget: 0.0,
-          coverOpenTarget: false,
-          cutawayTarget: false
+          title: "ขั้นที่ 6: ระบบพ่นละอองน้ำหอม 12V และทดสอบอบรองเท้าจริง",
+          desc: "ติดตั้งถังน้ำหอมแบบใส ปั๊มไดอะแฟรม 12V ท่อซิลิโคน และหัวพ่นละอองทองเหลือง (Brass Atomizing Nozzle) วางรองเท้าผ้าใบบนตะแกรง ปิดฝา และกดเริ่มรอบอบอัตโนมัติ",
+          hw: "ถังน้ำหอมโปร่งแสง, ปั๊มไดอะแฟรม 12V, สายซิลิโคน, หัวพ่นทองเหลือง, รองเท้าทดสอบ",
+          cam: "overview",
+          cutaway: false,
+          coverOpen: false,
+          explode: 0.0,
+          focusPart: "mist_system"
         }
       ];
 
-      const PARTS = {
-        base_box: {
-          name: "ฐานกล่องควบคุมและตัวถังล่าง",
+      const PART_SPECS = {
+        base_housing: {
+          name: "ตัวถังฐานควบคุม (Matte Anthracite Base)",
           step: 1,
-          offShelf: "แผ่นพลาสวูดหนา 10 มม. หรือกล่องพลาสติก ABS สีเทาอ่อน",
-          size: "35 × 28 × 10 ซม. (แบ่งโซนลมร้อนซ้าย / โซนวงจรขวา)",
-          role: "รองรับน้ำหนักท่อลมและรองเท้า เก็บวงจรให้มิดชิด และกันความร้อนสะสมโดนบอร์ด"
+          material: "พลาสติก ABS / Plaswood ผิวด้านสีเทาเข้ม ขอบลบมุม พร้อมขาตั้งยางกันลื่น",
+          detail: "ออกแบบแบ่งห้องภายในเป็น 2 โซน: ห้องลมร้อนด้านซ้ายและห้องอิเล็กทรอนิกส์ด้านขวา มีช่องระบายอากาศด้านข้างและแผงหน้าปัดเอียง 35°",
+          role: "รองรับโครงสร้างทั้งหมด ป้องกันความร้อนสะสมเข้าสู่วงจรควบคุม และให้มุมมองหน้าจอที่อ่านง่าย"
         },
-        oled_display: {
-          name: "หน้าจอแสดงผล OLED 0.96 นิ้ว (I2C)",
+        oled_panel: {
+          name: "หน้าจอ OLED 0.96\" และปุ่มควบคุมหน้าเครื่อง",
           step: 1,
-          offShelf: "โมดูลจอ OLED 0.96\" 4 ขา (VCC, GND, SDA, SCL)",
-          size: "128×64 พิกเซล ฝังด้านหน้าฐานกล่อง",
-          role: "แสดงอุณหภูมิ ความชื้น เวลาที่เหลือ และสถานะการทำงานหรือการตัดไฟนิรภัย"
-        },
-        ptc_heater: {
-          name: "ฮีตเตอร์เซรามิก PTC 12V พร้อมพัดลมเป่า",
-          step: 2,
-          offShelf: "ฮีตเตอร์เซรามิก PTC 12V 100W พร้อมพัดลม DC 12V",
-          size: "ติดตั้งโซนซ้ายด้านในฐานกล่อง ใต้ช่องท่อลม",
-          role: "สร้างลมร้อนสม่ำเสมอราว 45–50°C โดยไม่เกิดเปลวไฟ เพื่อไล่ความชื้นในรองเท้า"
+          material: "จอ OLED สีฟ้า-ไซแอนความสว่างสูง + ปุ่มกด Tactile + ไฟสถานะ LED",
+          detail: "แสดงค่าอุณหภูมิ (°C), ความชื้นสัมพัทธ์ (%RH), เวลานับถอยหลัง และสถานะการทำงาน (DRYING / UV-C / MIST / DOOR OPEN)",
+          role: "เป็นส่วนติดต่อผู้ใช้งาน (UI) บนตัวเครื่องจริง แสดงผลอัปเดตตามสถานะจำลองแบบเรียลไทม์"
         },
         esp32_relay: {
-          name: "บอร์ด ESP32, รีเลย์ และเซ็นเซอร์ DHT22",
+          name: "บอร์ด ESP32 และโมดูลรีเลย์ 2 ช่อง (2-Channel Relay)",
           step: 2,
-          offShelf: "บอร์ด ESP32 + โมดูลรีเลย์ 2–3 ช่อง 5V + DHT22 + LM2596",
-          size: "ติดตั้งโซนขวาด้านในฐานกล่อง (แยกจากฮีตเตอร์)",
-          role: "ควบคุมเวลา อุณหภูมิ ความชื้น ตัดไฟเมื่อเปิดฝา และสั่งงานตามลำดับอัตโนมัติ"
+          material: "บอร์ดไมโครคอนโทรลเลอร์ ESP32 Wi-Fi/BLE + รีเลย์ 2 ช่องพร้อมไฟ LED แสดงสถานะ",
+          detail: "ติดตั้งในห้องวงจรด้านขวาของฐานเครื่อง ควบคุมการตัด-ต่อไฟ 12V ไปยังฮีตเตอร์ หลอด UV-C และปั๊มน้ำหอมอย่างแม่นยำ",
+          role: "ประมวลผลค่าจากเซ็นเซอร์ DHT22 คุมอุณหภูมิเทอร์โมสตัท และสั่งตัดไฟทันทีเมื่อไมโครสวิตช์ฝาครอบถูกเปิด"
         },
-        pvc_nozzles: {
-          name: "ท่อส่งลมร้อน PVC สีขาว (2 ท่อ)",
+        ptc_heater: {
+          name: "ฮีตเตอร์เซรามิก PTC 12V 100W + พัดลมเป่าลมร้อน",
           step: 3,
-          offShelf: "ท่อน้ำทิ้ง PVC สีขาว + หน้าแปลน/ข้อต่อยึด",
-          size: "เส้นผ่านศูนย์กลาง ~1.5 นิ้ว สูง ~15–18 ซม. ห่างกัน 15 ซม.",
-          role: "ส่งลมร้อนเข้าสู่ด้านในรองเท้าทั้งสองข้างให้แห้งถึงส่วนปลายเท้า"
+          material: "แผ่นทำความร้อนเซรามิก PTC ครีบอลูมิเนียมลูกฟูก + พัดลม Axial 12V + ตะแกรงสเตนเลส",
+          detail: "ครีบอลูมิเนียมจะเปล่งแสงสีส้มอุ่นเมื่อทำงาน พัดลมด้านล่างดูดอากาศผ่านครีบร้อนขึ้นไปผ่านตะแกรงสเตนเลสเจาะรูเข้าสู่รองเท้า",
+          role: "สร้างลมร้อนสม่ำเสมอ ~45–50°C ไล่ความชื้นออกจากรองเท้าอย่างรวดเร็วโดยไม่ทำลายกาวรองเท้า"
         },
-        cover_box: {
-          name: "ฝาครอบกล่องพลาสติกใส & สวิตช์นิรภัย",
+        acrylic_cover: {
+          name: "ฝาครอบอะคริลิกใสบานพับ & สวิตช์นิรภัย (Limit Switch)",
           step: 4,
-          offShelf: "กล่องใส่รองเท้าพลาสติกใสฝาปิด + ไมโครสวิตช์ (Limit Switch)",
-          size: "35 × 28 × 30 ซม. (ความสูงรวมทั้งเครื่อง ~40 ซม.)",
-          role: "กักเก็บลมร้อนและแสง UV-C เจาะรูระบายไอน้ำด้านบน และตัดไฟเมื่อยกฝาขึ้น"
+          material: "แผ่นอะคริลิก/โพลีคาร์บอเนตใสเงา ขอบหนา ซีลยางซิลิโคน ตัวล็อกข้าง และ Limit Switch",
+          detail: "เปิด-ปิดแบบบานพับด้านหลัง มีไมโครสวิตช์ก้านโลหะคอยตรวจจับการปิดสนิทของฝาครอบตลอดเวลา",
+          role: "กักเก็บความร้อนและแสง UV-C ภายในตู้ พร้อมระบบ Safety Interlock ตัดไฟทันทีเมื่อเปิดฝาเพื่อความปลอดภัย"
         },
         uv_lamp: {
-          name: "หลอดฆ่าเชื้อ UV-C 12V",
-          step: 4,
-          offShelf: "หลอดไฟ UV-C 12V ขั้ว E17 ขนาด ~3W พร้อมขั้วหลอด",
-          size: "ยึดใต้ฝาครอบด้านบน ตัดไฟทันทีเมื่อเปิดฝา",
-          role: "ลดแบคทีเรียและเชื้อราต้นเหตุของกลิ่นอับภายในและภายนอกรองเท้า"
-        },
-        perfume_pump: {
-          name: "ปั๊มพ่นน้ำหอม 12V และขวดสเปรย์",
+          name: "หลอดฆ่าเชื้อ UV-C Ozone 12V (Quartz Tube)",
           step: 5,
-          offShelf: "ปั๊มจิ๋ว 12V + ขวดน้ำหอม/สเปรย์ดับกลิ่นสูตรน้ำ",
-          size: "วางโซนขวาด้านในฐานกล่อง ต่อสายยางซิลิโคน",
-          role: "สูบสเปรย์ดับกลิ่นหรือน้ำหอมขึ้นไปพ่นหลังอบเสร็จโดยไม่ทำให้รองเท้าเปียก"
+          material: "หลอดแก้วควอตซ์ UV-C 12V พร้อมขั้วยึดโครงบนและตัวสะท้อนแสง",
+          detail: "ติดตั้งใต้คานบนของตู้อบ เปล่งแสงสีม่วง-น้ำเงินพร้อมกรวยแสงฆ่าเชื้อครอบคลุมรองเท้าทั้งคู่",
+          role: "กำจัดแบคทีเรียและเชื้อราสาเหตุหลักของกลิ่นอับชื้นภายในและภายนอกรองเท้า"
         },
-        mist_nozzle: {
-          name: "หัวพ่นละอองฝอยและสายยางซิลิโคน",
+        mist_system: {
+          name: "ชุดพ่นละอองน้ำหอม 12V และหัวพ่นทองเหลือง",
+          step: 6,
+          material: "ถังบรรจุน้ำหอมโปร่งแสง + ปั๊มไดอะแฟรม 12V + สายซิลิโคน + หัวพ่นละอองทองเหลือง",
+          detail: "ดูดน้ำหอมดับกลิ่นจากถังส่งผ่านท่อซิลิโคนไปยังหัวพ่นทองเหลืองด้านบน พ่นเป็นละอองฝอยละเอียดในจังหวะสุดท้ายหลังอบเสร็จ",
+          role: "เพิ่มความหอมสดชื่นให้รองเท้าโดยไม่ทำให้รองเท้ากลับมาเปียกชื้น"
+        },
+        dht22_sensor: {
+          name: "เซ็นเซอร์วัดอุณหภูมิและความชื้น DHT22",
           step: 5,
-          offShelf: "หัวฉีดพ่นละอองฝอย (Mist Nozzle) + สายยางซิลิโคนใส",
-          size: "ติดผนังด้านในบน พ่นละอองฝอยสั้นๆ ~2 วินาที",
-          role: "กระจายละอองกลิ่นหอมให้ทั่วตู้หลังอบเสร็จและปิดฮีตเตอร์แล้ว"
+          material: "โมดูลเซ็นเซอร์ดิจิทัล DHT22 สีขาว ติดตั้งบนผนังด้านในตู้อบ",
+          detail: "ตรวจวัดอุณหภูมิและความชื้นภายในห้องอบอย่างต่อเนื่องเพื่อส่งให้ ESP32 ควบคุมฮีตเตอร์แบบเทอร์โมสตัท",
+          role: "ป้องกันความร้อนสูงเกินกำหนดและตรวจสอบความแห้งของรองเท้า"
         },
         sneakers: {
-          name: "รองเท้าผ้าใบ (ชิ้นงานทดลอง)",
+          name: "รองเท้าผ้าใบคู่ทดสอบ (Detailed Sneakers)",
           step: 6,
-          offShelf: "รองเท้าผ้าใบ/กีฬาสำหรับทดสอบจริง",
-          size: "สวมบนท่อ PVC ซ้ายและขวา",
-          role: "ใช้ทดลองวัดอัตราการลดความชื้น ลดกลิ่นอับ และตรวจสภาพกาว/รูปทรง"
+          material: "ผ้าตาข่ายระบายอากาศ พื้นยางสีขาว ลิ้นรองเท้า และเชือกผูกรองเท้า",
+          detail: "วางบนตะแกรงสเตนเลสเจาะรูเหนือช่องลมร้อนของฮีตเตอร์ PTC",
+          role: "จำลองการรับลมร้อน แสงฆ่าเชื้อ UV-C และละอองน้ำหอมภายในตู้"
         }
       };
 
       /* =====================================================================
-         2. APPLICATION STATE
+         2. SIMULATION & APPLICATION STATE
          ===================================================================== */
       const state = {
-        activeStep: 1,
-        activeCam: "overview",
+        running: false,
+        phase: "idle", // 'idle' | 'drying' | 'uv' | 'mist' | 'done'
         coverOpen: false,
+        coverAngle: 0, // 0 = closed, 1.05 rad = open
         cutaway: false,
-        explode: 0.0,
+        explode: 0,
         heaterOn: false,
         uvOn: false,
         mistOn: false,
-        selectedPart: "base_box",
         temp: 28.5,
         humidity: 68.0,
-        timerSelectedSec: 30 * 60,
-        timerRemainingSec: 30 * 60,
-        timerRunning: false,
-        autoSeq: true,
-        // 'idle' | 'drying' | 'post_uv' | 'post_mist' | 'done'
-        seqStage: "idle",
-        postSec: 0
+        selectedMins: 30,
+        remainingSec: 30 * 60,
+        simSpeed: 1,
+        postTimer: 0,
+        activeStep: 1,
+        selectedPart: "base_housing",
+        hudCollapsed: false
       };
 
-      let manualMistTimer = null;
+      let manualMistTimeout = null;
 
-      function notify(msg) {
-        const el = document.getElementById("toast-banner");
+      function showToast(text) {
+        const el = document.getElementById("toast-msg");
         if (!el) return;
-        el.textContent = msg;
-        el.classList.add("show");
-        clearTimeout(notify._t);
-        notify._t = setTimeout(() => el.classList.remove("show"), 3000);
+        el.textContent = text;
+        el.style.opacity = "1";
+        clearTimeout(showToast._timer);
+        showToast._timer = setTimeout(() => {
+          el.style.opacity = "0";
+        }, 2800);
       }
 
-      function fmtMMSS(sec) {
+      function formatTime(sec) {
         const s = Math.max(0, Math.floor(sec));
-        return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+        const m = Math.floor(s / 60);
+        const r = s % 60;
+        return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
       }
 
       /* =====================================================================
-         3. CAMERA PRESETS & STEP SYNCHRONIZATION
+         3. THREE.JS WEBGL PBR SCENE SETUP
          ===================================================================== */
-      const cam = {
-        yaw: 0.62,
-        pitch: 0.36,
-        zoom: 1.08,
-        panX: 12,
-        panY: 16,
-        targetYaw: 0.62,
-        targetPitch: 0.36,
-        targetZoom: 1.08,
-        targetPanX: 12,
-        targetPanY: 16,
-        dragging: false,
-        lastX: 0,
-        lastY: 0,
-        downX: 0,
-        downY: 0
-      };
+      const container = document.getElementById("webgl-container");
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0f172a);
+      scene.fog = new THREE.FogExp2(0x0f172a, 0.032);
 
-      function applyCameraPreset(preset, smooth) {
-        const useSmooth = smooth !== false;
-        state.activeCam = preset;
-        let ty = 0.62, tp = 0.36, tz = 1.08, px = 12, py = 16;
+      const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(5.4, 4.3, 6.2);
 
-        if (preset === "overview") {
-          ty = 0.62; tp = 0.36; tz = 1.08; px = 12; py = 16;
-        } else if (preset === "front") {
-          ty = 0.08; tp = 0.22; tz = 1.16; px = 8; py = 16;
-          state.cutaway = true;
-        } else if (preset === "cutaway") {
-          ty = 0.78; tp = 0.33; tz = 1.15; px = 10; py = 18;
-          state.cutaway = true;
-        } else if (preset === "top") {
-          ty = 0.42; tp = 1.02; tz = 1.05; px = 10; py = 12;
-        }
+      const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      container.appendChild(renderer.domElement);
 
-        cam.targetYaw = ty;
-        cam.targetPitch = tp;
-        cam.targetZoom = tz;
-        cam.targetPanX = px;
-        cam.targetPanY = py;
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.065;
+      controls.minDistance = 3.2;
+      controls.maxDistance = 14.5;
+      controls.maxPolarAngle = Math.PI * 0.485;
+      controls.target.set(0, 1.45, 0);
 
-        if (!useSmooth) {
-          cam.yaw = ty;
-          cam.pitch = tp;
-          cam.zoom = tz;
-          cam.panX = px;
-          cam.panY = py;
-        }
-        renderUI();
+      // Procedural Studio Environment Map for realistic PBR reflections
+      function createStudioEnvMap() {
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        pmrem.compileEquirectangularShader();
+        const envScene = new THREE.Scene();
+        envScene.background = new THREE.Color(0x1e293b);
+
+        const softbox1 = new THREE.Mesh(
+          new THREE.PlaneGeometry(14, 14),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
+        );
+        softbox1.position.set(0, 10, 0);
+        softbox1.rotation.x = Math.PI / 2;
+        envScene.add(softbox1);
+
+        const softbox2 = new THREE.Mesh(
+          new THREE.PlaneGeometry(10, 8),
+          new THREE.MeshBasicMaterial({ color: 0xe0f2fe, side: THREE.DoubleSide })
+        );
+        softbox2.position.set(9, 4, 7);
+        softbox2.lookAt(0, 0, 0);
+        envScene.add(softbox2);
+
+        const rimBox = new THREE.Mesh(
+          new THREE.PlaneGeometry(10, 8),
+          new THREE.MeshBasicMaterial({ color: 0xfef3c7, side: THREE.DoubleSide })
+        );
+        rimBox.position.set(-9, 5, -6);
+        rimBox.lookAt(0, 0, 0);
+        envScene.add(rimBox);
+
+        const envRT = pmrem.fromScene(envScene, 0.04);
+        pmrem.dispose();
+        return envRT.texture;
       }
+      scene.environment = createStudioEnvMap();
 
-      function setBuildStep(stepNum) {
-        const clamped = Math.max(1, Math.min(6, Number(stepNum) || 1));
-        state.activeStep = clamped;
-        const info = BUILD_STEPS[clamped - 1];
-        if (info) {
-          state.coverOpen = Boolean(info.coverOpenTarget);
-          state.cutaway = Boolean(info.cutawayTarget);
-          state.explode = Number(info.explodeTarget) || 0;
-          const sl = document.getElementById("explode-slider");
-          if (sl) sl.value = String(Math.round(state.explode * 100));
-          applyCameraPreset(info.camera, true);
-          if (info.highlightParts && info.highlightParts.length > 0) {
-            state.selectedPart = info.highlightParts[0];
+      // Studio Three-Point Lighting
+      const hemiLight = new THREE.HemisphereLight(0xe2e8f0, 0x1e293b, 0.65);
+      scene.add(hemiLight);
+
+      const keyLight = new THREE.DirectionalLight(0xffffff, 1.35);
+      keyLight.position.set(5.5, 9.5, 6.5);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.width = 2048;
+      keyLight.shadow.mapSize.height = 2048;
+      keyLight.shadow.camera.near = 1;
+      keyLight.shadow.camera.far = 25;
+      const dShadow = 4.5;
+      keyLight.shadow.camera.left = -dShadow;
+      keyLight.shadow.camera.right = dShadow;
+      keyLight.shadow.camera.top = dShadow;
+      keyLight.shadow.camera.bottom = -dShadow;
+      keyLight.shadow.bias = -0.0005;
+      scene.add(keyLight);
+
+      const rimLight = new THREE.DirectionalLight(0x7dd3fc, 0.55);
+      rimLight.position.set(-6, 5, -5);
+      scene.add(rimLight);
+
+      // Internal Dynamic Point Lights (PTC Heater Glow & UV-C Lamp Glow)
+      const ptcGlowLight = new THREE.PointLight(0xff5a1f, 0, 3.6, 1.8);
+      ptcGlowLight.position.set(-0.65, 0.65, 0.0);
+      scene.add(ptcGlowLight);
+
+      const uvGlowLight = new THREE.PointLight(0x8b5cf6, 0, 4.8, 1.5);
+      uvGlowLight.position.set(0, 2.75, 0);
+      scene.add(uvGlowLight);
+
+      // Studio Pedestal & Subtle Floor Grid
+      const floorGeo = new THREE.CircleGeometry(14, 64);
+      const floorMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        roughness: 0.72,
+        metalness: 0.15
+      });
+      const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+      floorMesh.rotation.x = -Math.PI / 2;
+      floorMesh.receiveShadow = true;
+      scene.add(floorMesh);
+
+      const gridHelper = new THREE.GridHelper(16, 32, 0x334155, 0x1e293b);
+      gridHelper.position.y = 0.002;
+      scene.add(gridHelper);
+
+      /* =====================================================================
+         4. PROCEDURAL TEXTURES (PERFORATED STEEL, MESH FABRIC, LIVE OLED)
+         ===================================================================== */
+      function makePerforatedMetalTexture() {
+        const c = document.createElement("canvas");
+        c.width = 256;
+        c.height = 256;
+        const g = c.getContext("2d");
+        g.fillStyle = "#cbd5e1";
+        g.fillRect(0, 0, 256, 256);
+
+        // Brushed metal streaks
+        for (let i = 0; i < 400; i++) {
+          g.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.06)";
+          g.fillRect(0, Math.random() * 256, 256, 1);
+        }
+
+        // Ventilation holes
+        g.fillStyle = "#0f172a";
+        const step = 24;
+        for (let y = 12; y < 256; y += step) {
+          for (let x = 12; x < 256; x += step) {
+            const ox = (Math.floor(y / step) % 2) * 12;
+            g.beginPath();
+            g.arc((x + ox) % 256, y, 5.2, 0, Math.PI * 2);
+            g.fill();
           }
         }
-        renderUI();
+        const tex = new THREE.CanvasTexture(c);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(3, 2);
+        return tex;
+      }
+
+      function makeSneakerFabricTexture(accentHex) {
+        const c = document.createElement("canvas");
+        c.width = 256;
+        c.height = 256;
+        const g = c.getContext("2d");
+        g.fillStyle = "#f1f5f9";
+        g.fillRect(0, 0, 256, 256);
+
+        // Breathable knit mesh pattern
+        g.fillStyle = "#cbd5e1";
+        for (let y = 0; y < 256; y += 8) {
+          for (let x = 0; x < 256; x += 8) {
+            g.fillRect(x + ((y / 8) % 2) * 4, y, 3, 3);
+          }
+        }
+        // Sport stripe
+        g.fillStyle = accentHex;
+        g.fillRect(0, 145, 256, 28);
+        return new THREE.CanvasTexture(c);
+      }
+
+      // Live Dynamic OLED Canvas Texture
+      const oledCanvas = document.createElement("canvas");
+      oledCanvas.width = 512;
+      oledCanvas.height = 256;
+      const oledCtx = oledCanvas.getContext("2d");
+      const oledTexture = new THREE.CanvasTexture(oledCanvas);
+
+      function updateOledScreen() {
+        const g = oledCtx;
+        g.fillStyle = "#030b17";
+        g.fillRect(0, 0, 512, 256);
+
+        // Border frame
+        g.strokeStyle = "#0ea5e9";
+        g.lineWidth = 6;
+        g.strokeRect(10, 10, 492, 236);
+
+        // Header bar
+        g.fillStyle = "#0c4a6e";
+        g.fillRect(16, 16, 480, 44);
+        g.fillStyle = "#7dd3fc";
+        g.font = "bold 24px monospace";
+        g.textAlign = "left";
+        g.fillText("SMART SHOE DRYER IoT", 28, 46);
+
+        // Safety / Mode Tag on right
+        g.textAlign = "right";
+        if (state.coverOpen) {
+          g.fillStyle = "#fb7185";
+          g.fillText("DOOR OPEN!", 482, 46);
+        } else if (state.phase === "drying") {
+          g.fillStyle = "#fbbf24";
+          g.fillText("DRYING", 482, 46);
+        } else if (state.phase === "uv") {
+          g.fillStyle = "#c084fc";
+          g.fillText("UV-C ON", 482, 46);
+        } else if (state.phase === "mist") {
+          g.fillStyle = "#22d3ee";
+          g.fillText("MIST SPRAY", 482, 46);
+        } else {
+          g.fillStyle = "#34d399";
+          g.fillText("READY", 482, 46);
+        }
+
+        // Temp & Humidity Readout
+        g.textAlign = "left";
+        g.fillStyle = "#38bdf8";
+        g.font = "bold 46px monospace";
+        g.fillText(`${state.temp.toFixed(1)}°C`, 30, 128);
+
+        g.fillStyle = "#22d3ee";
+        g.fillText(`${Math.round(state.humidity)}%RH`, 275, 128);
+
+        // Divider
+        g.strokeStyle = "rgba(56, 189, 248, 0.35)";
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(24, 152);
+        g.lineTo(488, 152);
+        g.stroke();
+
+        // Timer & Active Subsystems
+        g.fillStyle = "#f8fafc";
+        g.font = "bold 48px monospace";
+        g.fillText(`TIME ${formatTime(state.remainingSec)}`, 30, 215);
+
+        g.textAlign = "right";
+        g.font = "bold 22px monospace";
+        g.fillStyle = state.heaterOn ? "#f59e0b" : "#475569";
+        g.fillText("PTC", 482, 184);
+        g.fillStyle = state.uvOn ? "#a855f7" : "#475569";
+        g.fillText("UV", 425, 184);
+        g.fillStyle = state.mistOn ? "#06b6d4" : "#475569";
+        g.fillText("MIST", 482, 218);
+
+        oledTexture.needsUpdate = true;
       }
 
       /* =====================================================================
-         4. UI RENDERING
+         5. HIGH-DETAIL 3D HARDWARE ASSEMBLY CONSTRUCTION
          ===================================================================== */
-      function renderUI() {
-        // Safety enforcement
-        if (state.coverOpen) {
-          state.uvOn = false;
-          state.mistOn = false;
+      const interactiveMeshes = [];
+      const partGroups = {};
+
+      function registerInteractive(mesh, partKey) {
+        mesh.userData.partKey = partKey;
+        interactiveMeshes.push(mesh);
+      }
+
+      // Shared PBR Materials
+      const matChassis = new THREE.MeshStandardMaterial({
+        color: 0x262f3d,
+        roughness: 0.58,
+        metalness: 0.18
+      });
+      const matChassisCutaway = new THREE.MeshStandardMaterial({
+        color: 0x262f3d,
+        roughness: 0.58,
+        metalness: 0.18,
+        transparent: true,
+        opacity: 0.22
+      });
+      const matRubber = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        roughness: 0.85,
+        metalness: 0.05
+      });
+      const matBrushedSteel = new THREE.MeshStandardMaterial({
+        map: makePerforatedMetalTexture(),
+        roughness: 0.34,
+        metalness: 0.82
+      });
+      const matAluminum = new THREE.MeshStandardMaterial({
+        color: 0xd1d5db,
+        roughness: 0.28,
+        metalness: 0.88
+      });
+      const matBrass = new THREE.MeshStandardMaterial({
+        color: 0xd97706,
+        roughness: 0.25,
+        metalness: 0.9
+      });
+      const matClearAcrylic = new THREE.MeshPhysicalMaterial({
+        color: 0xe0f2fe,
+        transparent: true,
+        opacity: 0.24,
+        roughness: 0.08,
+        metalness: 0.05,
+        reflectivity: 0.9,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.06,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+      const matAcrylicRim = new THREE.MeshPhysicalMaterial({
+        color: 0x7dd3fc,
+        transparent: true,
+        opacity: 0.52,
+        roughness: 0.15,
+        metalness: 0.1,
+        clearcoat: 1.0
+      });
+
+      const rootAssembly = new THREE.Group();
+      scene.add(rootAssembly);
+
+      // --- A. BASE STATION & CONTROL HOUSING ---
+      const baseGroup = new THREE.Group();
+      partGroups.base_housing = baseGroup;
+      rootAssembly.add(baseGroup);
+
+      // Rubber Feet (4 corners)
+      [[-1.45, -1.05], [1.45, -1.05], [-1.45, 1.05], [1.45, 1.05]].forEach(([fx, fz]) => {
+        const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.1, 24), matRubber);
+        foot.position.set(fx, 0.05, fz);
+        foot.castShadow = true;
+        foot.receiveShadow = true;
+        baseGroup.add(foot);
+      });
+
+      // Base Floor Plate
+      const baseBottom = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.1, 2.6), matChassis);
+      baseBottom.position.set(0, 0.15, 0);
+      baseBottom.castShadow = true;
+      baseBottom.receiveShadow = true;
+      registerInteractive(baseBottom, "base_housing");
+      baseGroup.add(baseBottom);
+
+      // Base Outer Walls (Switchable to translucent cutaway)
+      const baseWallMeshes = [];
+      function addBaseWall(w, h, d, x, y, z) {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matChassis);
+        m.position.set(x, y, z);
+        m.castShadow = true;
+        m.receiveShadow = true;
+        registerInteractive(m, "base_housing");
+        baseGroup.add(m);
+        baseWallMeshes.push(m);
+        return m;
+      }
+      addBaseWall(3.4, 0.72, 0.12, 0, 0.56, -1.24); // Back wall
+      addBaseWall(0.12, 0.72, 2.6, -1.64, 0.56, 0); // Left wall
+      addBaseWall(0.12, 0.72, 2.6, 1.64, 0.56, 0);  // Right wall
+      addBaseWall(3.4, 0.72, 0.12, 0, 0.56, 1.24);  // Front wall
+
+      // Side Ventilation Louvers
+      for (let side of [-1.705, 1.705]) {
+        for (let i = -3; i <= 3; i++) {
+          const slot = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.36, 0.06), matRubber);
+          slot.position.set(side, 0.56, i * 0.24);
+          baseGroup.add(slot);
+        }
+      }
+
+      // Internal Thermal Divider Wall (Separates PTC Heater bay from ESP32 bay)
+      const dividerWall = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.68, 2.36), matAluminum);
+      dividerWall.position.set(0.18, 0.54, 0);
+      baseGroup.add(dividerWall);
+
+      // --- B. ANGLED FRONT CONTROL PANEL & OLED DISPLAY ---
+      const oledGroup = new THREE.Group();
+      partGroups.oled_panel = oledGroup;
+      baseGroup.add(oledGroup);
+
+      const panelHousing = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.56, 0.42), matChassis);
+      panelHousing.position.set(0, 0.62, 1.34);
+      panelHousing.rotation.x = -0.38;
+      panelHousing.castShadow = true;
+      registerInteractive(panelHousing, "oled_panel");
+      oledGroup.add(panelHousing);
+
+      const oledScreenMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.92, 0.44),
+        new THREE.MeshBasicMaterial({ map: oledTexture })
+      );
+      oledScreenMesh.position.set(-0.24, 0.69, 1.535);
+      oledScreenMesh.rotation.x = -0.38;
+      registerInteractive(oledScreenMesh, "oled_panel");
+      oledGroup.add(oledScreenMesh);
+
+      // Tactile Push Buttons & Status LEDs on Control Panel
+      const ledMaterials = [];
+      [0x22c55e, 0xf59e0b, 0xa855f7].forEach((col, idx) => {
+        const btnMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.06, 20), matAluminum);
+        btnMesh.position.set(0.38 + idx * 0.18, 0.65, 1.51);
+        btnMesh.rotation.x = Math.PI / 2 - 0.38;
+        registerInteractive(btnMesh, "oled_panel");
+        oledGroup.add(btnMesh);
+
+        const ledMat = new THREE.MeshStandardMaterial({
+          color: col,
+          emissive: col,
+          emissiveIntensity: idx === 0 ? 1.2 : 0.15,
+          roughness: 0.2
+        });
+        ledMaterials.push(ledMat);
+        const led = new THREE.Mesh(new THREE.SphereGeometry(0.026, 12, 12), ledMat);
+        led.position.set(0.38 + idx * 0.18, 0.77, 1.46);
+        oledGroup.add(led);
+      });
+
+      // --- C. INTERNAL ELECTRONICS BAY (ESP32 + 2-CHANNEL RELAY) ---
+      const elecGroup = new THREE.Group();
+      partGroups.esp32_relay = elecGroup;
+      rootAssembly.add(elecGroup);
+
+      // ESP32 PCB Board
+      const espPcb = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.04, 0.95),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4, metalness: 0.3 })
+      );
+      espPcb.position.set(0.68, 0.26, 0.45);
+      registerInteractive(espPcb, "esp32_relay");
+      elecGroup.add(espPcb);
+
+      // ESP32 Metal RF Shield
+      const espShield = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.06, 0.42), matAluminum);
+      espShield.position.set(0.68, 0.31, 0.35);
+      registerInteractive(espShield, "esp32_relay");
+      elecGroup.add(espShield);
+
+      // 2-Channel Relay Module (Blue PCB + 2 Blue Relay Cubes + Glowing LEDs)
+      const relayPcb = new THREE.Mesh(
+        new THREE.BoxGeometry(0.62, 0.04, 0.72),
+        new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.35, metalness: 0.25 })
+      );
+      relayPcb.position.set(0.68, 0.26, -0.52);
+      registerInteractive(relayPcb, "esp32_relay");
+      elecGroup.add(relayPcb);
+
+      const relayCubeMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.1 });
+      [-0.66, -0.38].forEach((rz) => {
+        const cube = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.28, 0.24), relayCubeMat);
+        cube.position.set(0.68, 0.42, rz);
+        registerInteractive(cube, "esp32_relay");
+        elecGroup.add(cube);
+      });
+
+      const relayLed1Mat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 0.1 });
+      const relayLed2Mat = new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x22c55e, emissiveIntensity: 0.1 });
+      const rLed1 = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 10), relayLed1Mat);
+      rLed1.position.set(0.45, 0.31, -0.66);
+      const rLed2 = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 10), relayLed2Mat);
+      rLed2.position.set(0.45, 0.31, -0.38);
+      elecGroup.add(rLed1, rLed2);
+
+      // --- D. PTC CERAMIC HEATER (12V 100W) + SPINNING AXIAL FAN + PERFORATED RACK ---
+      const ptcGroup = new THREE.Group();
+      partGroups.ptc_heater = ptcGroup;
+      rootAssembly.add(ptcGroup);
+
+      // Axial Cooling Fan Frame & Spinning Blades
+      const fanHousing = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.16, 1.15), matRubber);
+      fanHousing.position.set(-0.72, 0.3, 0);
+      registerInteractive(fanHousing, "ptc_heater");
+      ptcGroup.add(fanHousing);
+
+      const fanRotor = new THREE.Group();
+      fanRotor.position.set(-0.72, 0.32, 0);
+      const fanHub = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.12, 20), matChassis);
+      fanRotor.add(fanHub);
+      for (let b = 0; b < 7; b++) {
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.02, 0.11), matChassis);
+        const ang = (b / 7) * Math.PI * 2;
+        blade.position.set(Math.cos(ang) * 0.28, 0, Math.sin(ang) * 0.28);
+        blade.rotation.y = -ang;
+        blade.rotation.x = 0.42;
+        fanRotor.add(blade);
+      }
+      ptcGroup.add(fanRotor);
+
+      // Corrugated Aluminum PTC Heating Fins
+      const ptcFinMat = new THREE.MeshStandardMaterial({
+        color: 0xe2e8f0,
+        emissive: 0xff4500,
+        emissiveIntensity: 0.0,
+        roughness: 0.28,
+        metalness: 0.88
+      });
+      const ptcFrame = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.24, 1.22), matRubber);
+      ptcFrame.position.set(-0.72, 0.56, 0);
+      registerInteractive(ptcFrame, "ptc_heater");
+      ptcGroup.add(ptcFrame);
+
+      for (let f = -5; f <= 5; f++) {
+        const fin = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.2, 0.035), ptcFinMat);
+        fin.position.set(-0.72, 0.56, f * 0.095);
+        registerInteractive(fin, "ptc_heater");
+        ptcGroup.add(fin);
+      }
+
+      // Perforated Brushed Stainless Steel Shoe Rack Deck
+      const shoeRackMesh = new THREE.Mesh(new THREE.BoxGeometry(3.26, 0.08, 2.46), matBrushedSteel);
+      shoeRackMesh.position.set(0, 0.94, 0);
+      shoeRackMesh.receiveShadow = true;
+      shoeRackMesh.castShadow = true;
+      registerInteractive(shoeRackMesh, "ptc_heater");
+      ptcGroup.add(shoeRackMesh);
+
+      // --- E. PAIR OF DETAILED REALISTIC SNEAKERS ---
+      const sneakersGroup = new THREE.Group();
+      partGroups.sneakers = sneakersGroup;
+      rootAssembly.add(sneakersGroup);
+
+      function buildDetailedSneaker(xPos, accentColorHex) {
+        const shoe = new THREE.Group();
+        shoe.position.set(xPos, 0.98, 0.08);
+
+        const rubberSoleMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.65, metalness: 0.05 });
+        const outsoleMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 });
+        const upperMat = new THREE.MeshStandardMaterial({
+          map: makeSneakerFabricTexture(accentColorHex),
+          roughness: 0.82,
+          metalness: 0.04
+        });
+        const accentMat = new THREE.MeshStandardMaterial({ color: accentColorHex, roughness: 0.45, metalness: 0.15 });
+
+        // Outsole + Midsole
+        const outsole = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.07, 1.72), outsoleMat);
+        outsole.position.set(0, 0.035, 0);
+        outsole.castShadow = true;
+        shoe.add(outsole);
+
+        const midsole = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.12, 1.68), rubberSoleMat);
+        midsole.position.set(0, 0.13, 0);
+        midsole.castShadow = true;
+        shoe.add(midsole);
+
+        // Main Upper Body + Rounded Toe Cap
+        const upperBody = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.34, 1.48), upperMat);
+        upperBody.position.set(0, 0.34, -0.04);
+        upperBody.castShadow = true;
+        shoe.add(upperBody);
+
+        const toeBox = new THREE.Mesh(new THREE.SphereGeometry(0.33, 20, 16), upperMat);
+        toeBox.scale.set(1.0, 0.56, 1.25);
+        toeBox.position.set(0, 0.28, 0.55);
+        toeBox.castShadow = true;
+        shoe.add(toeBox);
+
+        // Padded Collar & Tongue
+        const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.31, 0.26, 20), accentMat);
+        collar.position.set(0, 0.56, -0.34);
+        collar.castShadow = true;
+        shoe.add(collar);
+
+        const innerHole = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.21, 0.21, 0.27, 18),
+          new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 })
+        );
+        innerHole.position.set(0, 0.565, -0.34);
+        shoe.add(innerHole);
+
+        const tongue = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.28, 0.08), upperMat);
+        tongue.position.set(0, 0.62, -0.06);
+        tongue.rotation.x = -0.32;
+        shoe.add(tongue);
+
+        // Criss-cross Shoelaces (4 pairs)
+        for (let l = 0; l < 4; l++) {
+          const lace = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.38, 8), rubberSoleMat);
+          lace.position.set(0, 0.52 - l * 0.03, 0.05 + l * 0.12);
+          lace.rotation.z = Math.PI / 2;
+          lace.rotation.y = l % 2 === 0 ? 0.25 : -0.25;
+          shoe.add(lace);
         }
 
-        // Camera active buttons
-        document.querySelectorAll("[data-cam]").forEach((b) => {
-          const isAct = b.getAttribute("data-cam") === state.activeCam;
-          b.className = isAct ? "btn btn-xs active-cam" : "btn btn-xs";
+        shoe.traverse((child) => {
+          if (child.isMesh) registerInteractive(child, "sneakers");
+        });
+        return shoe;
+      }
+
+      sneakersGroup.add(buildDetailedSneaker(-0.68, "#0284c7"));
+      sneakersGroup.add(buildDetailedSneaker(0.68, "#0284c7"));
+
+      // --- F. PERFUME MIST SYSTEM (RESERVOIR + 12V PUMP + TUBING + BRASS NOZZLE) ---
+      const mistGroup = new THREE.Group();
+      partGroups.mist_system = mistGroup;
+      rootAssembly.add(mistGroup);
+
+      // Perfume Reservoir Tank & Visible Cyan Liquid Level
+      const tankGlass = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.62, 24), matClearAcrylic);
+      tankGlass.position.set(1.32, 0.56, 0.62);
+      registerInteractive(tankGlass, "mist_system");
+      mistGroup.add(tankGlass);
+
+      const perfumeLiquid = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.21, 0.21, 0.42, 24),
+        new THREE.MeshPhysicalMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.78, roughness: 0.1 })
+      );
+      perfumeLiquid.position.set(1.32, 0.47, 0.62);
+      registerInteractive(perfumeLiquid, "mist_system");
+      mistGroup.add(perfumeLiquid);
+
+      // 12V Mini Diaphragm Pump
+      const miniPump = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.38, 20), matAluminum);
+      miniPump.rotation.z = Math.PI / 2;
+      miniPump.position.set(1.26, 0.36, -0.05);
+      registerInteractive(miniPump, "mist_system");
+      mistGroup.add(miniPump);
+
+      // Silicone Tubing Curve up to Brass Atomizing Nozzle
+      const tubeCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(1.32, 0.86, 0.62),
+        new THREE.Vector3(1.48, 1.45, 0.38),
+        new THREE.Vector3(1.52, 2.35, 0.15),
+        new THREE.Vector3(1.38, 2.68, 0.05)
+      ]);
+      const tubeGeo = new THREE.TubeGeometry(tubeCurve, 28, 0.025, 10, false);
+      const tubeMat = new THREE.MeshPhysicalMaterial({ color: 0xe0f2fe, transparent: true, opacity: 0.72, roughness: 0.2 });
+      const siliconeTube = new THREE.Mesh(tubeGeo, tubeMat);
+      registerInteractive(siliconeTube, "mist_system");
+      mistGroup.add(siliconeTube);
+
+      // Brass Atomizing Nozzle
+      const brassNozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.065, 0.16, 18), matBrass);
+      brassNozzle.position.set(1.34, 2.68, 0.05);
+      brassNozzle.rotation.z = Math.PI / 2.4;
+      registerInteractive(brassNozzle, "mist_system");
+      mistGroup.add(brassNozzle);
+
+      // --- G. DHT22 SENSOR & MICRO LIMIT SWITCH (SAFETY INTERLOCK) ---
+      const dhtGroup = new THREE.Group();
+      partGroups.dht22_sensor = dhtGroup;
+      rootAssembly.add(dhtGroup);
+
+      const dhtBody = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.26, 0.18),
+        new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 })
+      );
+      dhtBody.position.set(-1.54, 1.85, -0.35);
+      registerInteractive(dhtBody, "dht22_sensor");
+      dhtGroup.add(dhtBody);
+
+      // Micro Limit Switch at Front Rim of Base Deck
+      const limitSwitchBody = new THREE.Mesh(
+        new THREE.BoxGeometry(0.22, 0.12, 0.12),
+        new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.4 })
+      );
+      limitSwitchBody.position.set(1.15, 1.02, 1.22);
+      registerInteractive(limitSwitchBody, "acrylic_cover");
+      baseGroup.add(limitSwitchBody);
+
+      const limitLever = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.015, 0.08), matAluminum);
+      limitLever.position.set(1.15, 1.1, 1.22);
+      baseGroup.add(limitLever);
+
+      // --- H. TRANSPARENT ACRYLIC HINGED COVER & UV-C OZONE GERMICIDAL LAMP ---
+      // Pivot at back edge (y = 0.98, z = -1.26) so cover hinges open realistically!
+      const coverHingePivot = new THREE.Group();
+      coverHingePivot.position.set(0, 0.98, -1.26);
+      partGroups.acrylic_cover = coverHingePivot;
+      rootAssembly.add(coverHingePivot);
+
+      // Silicone Gasket around bottom perimeter of cover
+      const gasketMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(3.34, 0.05, 2.54),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.5, transparent: true, opacity: 0.75 })
+      );
+      gasketMesh.position.set(0, 0.025, 1.26);
+      coverHingePivot.add(gasketMesh);
+
+      // Clear Polycarbonate/Acrylic Box Walls (Top, Front, Left, Right, Back)
+      const covH = 2.05;
+      const covW = 3.32;
+      const covD = 2.52;
+      const czLocal = 1.26;
+
+      function addCoverPanel(w, h, d, x, y, z) {
+        const panel = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matClearAcrylic);
+        panel.position.set(x, y, z);
+        registerInteractive(panel, "acrylic_cover");
+        coverHingePivot.add(panel);
+      }
+      addCoverPanel(covW, 0.06, covD, 0, covH, czLocal);           // Top roof
+      addCoverPanel(covW, covH, 0.05, 0, covH / 2, czLocal + covD / 2); // Front
+      addCoverPanel(covW, covH, 0.05, 0, covH / 2, czLocal - covD / 2); // Back
+      addCoverPanel(0.05, covH, covD, -covW / 2, covH / 2, czLocal);    // Left
+      addCoverPanel(0.05, covH, covD, covW / 2, covH / 2, czLocal);     // Right
+
+      // Edge Frame Highlights & Dual Side Latches
+      const edgeFrame = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(covW, covH, covD)),
+        new THREE.LineBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.55 })
+      );
+      edgeFrame.position.set(0, covH / 2, czLocal);
+      coverHingePivot.add(edgeFrame);
+
+      [-covW / 2 - 0.04, covW / 2 + 0.04].forEach((lx) => {
+        const latch = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.28, 0.22), matRubber);
+        latch.position.set(lx, 0.14, czLocal);
+        registerInteractive(latch, "acrylic_cover");
+        coverHingePivot.add(latch);
+      });
+
+      // UV-C Ozone Germicidal Lamp (12V) mounted inside upper cover frame
+      const uvLampGroup = new THREE.Group();
+      uvLampGroup.position.set(0, covH - 0.18, czLocal);
+      partGroups.uv_lamp = uvLampGroup;
+      coverHingePivot.add(uvLampGroup);
+
+      const uvReflector = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.08, 0.26), matAluminum);
+      uvReflector.position.set(0, 0.08, 0);
+      registerInteractive(uvReflector, "uv_lamp");
+      uvLampGroup.add(uvReflector);
+
+      const uvTubeMat = new THREE.MeshStandardMaterial({
+        color: 0xe9d5ff,
+        emissive: 0x8b5cf6,
+        emissiveIntensity: 0.0,
+        roughness: 0.15,
+        metalness: 0.1
+      });
+      const uvQuartzTube = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1.52, 20), uvTubeMat);
+      uvQuartzTube.rotation.z = Math.PI / 2;
+      registerInteractive(uvQuartzTube, "uv_lamp");
+      uvLampGroup.add(uvQuartzTube);
+
+      [-0.78, 0.78].forEach((capX) => {
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.12, 16), matRubber);
+        cap.rotation.z = Math.PI / 2;
+        cap.position.set(capX, 0, 0);
+        uvLampGroup.add(cap);
+      });
+
+      // Volumetric UV-C Light Cone
+      const uvConeMat = new THREE.MeshBasicMaterial({
+        color: 0x8b5cf6,
+        transparent: true,
+        opacity: 0.0,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      const uvLightCone = new THREE.Mesh(new THREE.ConeGeometry(1.45, 1.75, 32, 1, true), uvConeMat);
+      uvLightCone.position.set(0, -0.92, 0);
+      uvLampGroup.add(uvLightCone);
+
+      /* =====================================================================
+         6. 3D ANIMATED PARTICLE SYSTEMS (WARM AIRFLOW & PERFUME MIST)
+         ===================================================================== */
+      // Warm Airflow Stream Particles
+      const airCount = 70;
+      const airGeo = new THREE.BufferGeometry();
+      const airPositions = new Float32Array(airCount * 3);
+      const airSpeeds = new Float32Array(airCount);
+      for (let i = 0; i < airCount; i++) {
+        airPositions[i * 3] = (Math.random() - 0.5) * 2.1;
+        airPositions[i * 3 + 1] = 0.95 + Math.random() * 1.6;
+        airPositions[i * 3 + 2] = (Math.random() - 0.5) * 1.5;
+        airSpeeds[i] = 0.7 + Math.random() * 0.8;
+      }
+      airGeo.setAttribute("position", new THREE.BufferAttribute(airPositions, 3));
+      const airMat = new THREE.PointsMaterial({
+        color: 0xfb923c,
+        size: 0.075,
+        transparent: true,
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      const airParticles = new THREE.Points(airGeo, airMat);
+      rootAssembly.add(airParticles);
+
+      // Perfume Atomized Mist Particles
+      const mistCount = 110;
+      const mistGeo = new THREE.BufferGeometry();
+      const mistPositions = new Float32Array(mistCount * 3);
+      const mistLife = new Float32Array(mistCount);
+      for (let i = 0; i < mistCount; i++) {
+        mistLife[i] = Math.random();
+        mistPositions[i * 3] = 1.3;
+        mistPositions[i * 3 + 1] = 2.65;
+        mistPositions[i * 3 + 2] = 0.05;
+      }
+      mistGeo.setAttribute("position", new THREE.BufferAttribute(mistPositions, 3));
+      const mistMat = new THREE.PointsMaterial({
+        color: 0x67e8f9,
+        size: 0.068,
+        transparent: true,
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      const mistParticles = new THREE.Points(mistGeo, mistMat);
+      rootAssembly.add(mistParticles);
+
+      /* =====================================================================
+         7. CAMERA PRESETS & RAYCASTING (CLICK 3D PARTS TO INSPECT)
+         ===================================================================== */
+      const targetCamPos = new THREE.Vector3(5.4, 4.3, 6.2);
+      const targetLookAt = new THREE.Vector3(0, 1.45, 0);
+      let camAnimating = false;
+
+      function setCameraView(preset) {
+        document.querySelectorAll(".cam-btn").forEach((btn) => {
+          const active = btn.getAttribute("data-cam") === preset;
+          btn.className = active
+            ? "cam-btn px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-sky-500 text-slate-950 transition"
+            : "cam-btn px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-slate-200 hover:bg-slate-700/70 transition";
+        });
+
+        if (preset === "overview") {
+          targetCamPos.set(5.4, 4.3, 6.2);
+          targetLookAt.set(0, 1.45, 0);
+        } else if (preset === "front") {
+          targetCamPos.set(0.0, 2.2, 6.6);
+          targetLookAt.set(0, 1.35, 0);
+        } else if (preset === "cutaway") {
+          state.cutaway = true;
+          targetCamPos.set(4.6, 2.7, 5.2);
+          targetLookAt.set(0, 0.95, 0);
+        } else if (preset === "top") {
+          targetCamPos.set(0.1, 7.2, 3.2);
+          targetLookAt.set(0, 1.2, 0);
+        }
+        camAnimating = true;
+        syncUI();
+      }
+
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      let downPos = { x: 0, y: 0 };
+
+      renderer.domElement.addEventListener("pointerdown", (e) => {
+        downPos = { x: e.clientX, y: e.clientY };
+        camAnimating = false;
+      });
+
+      renderer.domElement.addEventListener("pointerup", (e) => {
+        const dist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
+        if (dist > 6) return;
+
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(pointer, camera);
+        const hits = raycaster.intersectObjects(interactiveMeshes, false);
+        if (hits.length > 0) {
+          const pickedKey = hits[0].object.userData.partKey;
+          if (pickedKey && PART_SPECS[pickedKey]) {
+            state.selectedPart = pickedKey;
+            const rightHud = document.getElementById("right-hud");
+            if (rightHud) {
+              rightHud.classList.remove("hidden");
+              rightHud.classList.add("flex");
+            }
+            syncUI();
+            showToast(`เลือกดู: ${PART_SPECS[pickedKey].name}`);
+          }
+        }
+      });
+
+      /* =====================================================================
+         8. UI SYNCHRONIZATION & INTERACTION HANDLERS
+         ===================================================================== */
+      function enforceSafetyInterlock() {
+        if (state.coverOpen) {
+          state.heaterOn = false;
+          state.uvOn = false;
+          state.mistOn = false;
+          if (state.running) {
+            state.running = false;
+            showToast("เปิดฝาครอบ: สวิตช์นิรภัยตัดไฟฮีตเตอร์ UV-C และปั๊มน้ำหอมทันที!");
+          }
+        }
+      }
+
+      function syncUI() {
+        enforceSafetyInterlock();
+
+        // Update 3D cutaway materials
+        baseWallMeshes.forEach((m) => {
+          m.material = state.cutaway ? matChassisCutaway : matChassis;
         });
 
         // Safety pill
-        const sBadge = document.getElementById("safety-badge");
-        const sLabel = document.getElementById("safety-label");
-        if (sBadge && sLabel) {
-          if (state.coverOpen) {
-            sBadge.className = "card safety-badge warn";
-            sLabel.textContent = "ฝาเปิดอยู่ • ตัดไฟ UV-C & น้ำหอม";
-          } else {
-            sBadge.className = "card safety-badge ok";
-            sLabel.textContent = "ฝาปิดสนิท • นิรภัยพร้อม";
-          }
+        const pill = document.getElementById("safety-pill");
+        const dot = document.getElementById("safety-dot");
+        const sText = document.getElementById("safety-text");
+        if (state.coverOpen) {
+          pill.className = "glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-2 text-xs font-bold border-rose-400/50 bg-rose-950/85 text-rose-200 pointer-events-auto transition-all";
+          dot.className = "w-2.5 h-2.5 rounded-full bg-rose-400 animate-ping";
+          sText.textContent = "ฝาครอบเปิดอยู่ • ตัดไฟนิรภัย (Safety Cutoff)";
+        } else {
+          pill.className = "glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-2 text-xs font-bold border-emerald-400/40 bg-emerald-950/75 text-emerald-200 pointer-events-auto transition-all";
+          dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse";
+          sText.textContent = "ฝาครอบปิดสนิท • สวิตช์นิรภัยพร้อม";
         }
 
-        // Step buttons & card
-        const stepInfo = BUILD_STEPS[state.activeStep - 1] || BUILD_STEPS[0];
-        document.querySelectorAll("[data-step]").forEach((b) => {
-          const n = Number(b.getAttribute("data-step"));
-          b.className = n === state.activeStep ? "btn step-num-btn active-step" : "btn step-num-btn";
-        });
-        const stepCounter = document.getElementById("step-counter");
-        const stepTitle = document.getElementById("step-title");
-        const stepDesc = document.getElementById("step-desc");
-        const stepTools = document.getElementById("step-tools");
-        const stepSafety = document.getElementById("step-safety");
-        if (stepCounter) stepCounter.textContent = `${state.activeStep} / 6`;
-        if (stepTitle) stepTitle.textContent = stepInfo.title;
-        if (stepDesc) stepDesc.textContent = stepInfo.desc;
-        if (stepTools) stepTools.innerHTML = `<strong style="color:var(--brand-deep);">อุปกรณ์/เครื่องมือ:</strong> ${stepInfo.tools}`;
-        if (stepSafety) stepSafety.innerHTML = `<strong style="color:#b45309;">ข้อควรระวัง:</strong> ${stepInfo.safety}`;
+        // Power button
+        const btnPower = document.getElementById("btn-power");
+        if (state.running) {
+          btnPower.textContent = "⏸ หยุดรอบอบ";
+          btnPower.className = "col-span-1 py-2 px-2 rounded-xl text-xs font-extrabold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-lg transition";
+        } else {
+          btnPower.textContent = "▶ เริ่มอบอัตโนมัติ";
+          btnPower.className = "col-span-1 py-2 px-2 rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition";
+        }
 
         // Cover & Cutaway buttons
-        const coverBtn = document.getElementById("btn-cover");
-        const cutBtn = document.getElementById("btn-cutaway");
-        const expVal = document.getElementById("explode-val");
-        if (coverBtn) {
-          coverBtn.textContent = state.coverOpen ? "ปิดฝาครอบ" : "เปิดฝาครอบ";
-          coverBtn.className = state.coverOpen ? "btn btn-xs btn-emerald" : "btn btn-xs btn-primary";
-        }
-        if (cutBtn) {
-          cutBtn.textContent = state.cutaway ? "โหมดทึบ/ใสปกติ" : "โหมดผ่าดูใน";
-          cutBtn.className = state.cutaway ? "btn btn-xs btn-amber" : "btn btn-xs";
-        }
-        if (expVal) expVal.textContent = `${Math.round(state.explode * 100)}%`;
+        const btnCover = document.getElementById("btn-cover");
+        btnCover.textContent = state.coverOpen ? "ปิดฝาครอบ" : "เปิดฝาครอบ";
+        btnCover.className = state.coverOpen
+          ? "py-2 px-2 rounded-xl text-xs font-bold bg-rose-500/30 border border-rose-400 text-rose-100 transition"
+          : "py-2 px-2 rounded-xl text-xs font-bold glass-sub hover:bg-slate-700/80 text-slate-100 transition";
 
-        // Mode toggles
-        const hBtn = document.getElementById("btn-heater");
-        const hTag = document.getElementById("tag-heater");
-        if (hBtn && hTag) {
-          hBtn.className = state.heaterOn ? "btn mode-row-btn on-heater" : "btn mode-row-btn";
-          hTag.textContent = state.heaterOn ? "ON" : "OFF";
-        }
+        const btnCut = document.getElementById("btn-cutaway");
+        btnCut.textContent = state.cutaway ? "ปิดโหมดผ่าฐาน" : "ผ่าดูวงจรฐาน";
+        btnCut.className = state.cutaway
+          ? "py-2 px-2 rounded-xl text-xs font-bold bg-sky-500/30 border border-sky-400 text-sky-100 transition"
+          : "py-2 px-2 rounded-xl text-xs font-bold glass-sub hover:bg-slate-700/80 text-slate-100 transition";
 
-        const uBtn = document.getElementById("btn-uv");
-        const uTag = document.getElementById("tag-uv");
-        if (uBtn && uTag) {
-          uBtn.className = state.uvOn ? "btn mode-row-btn on-uv" : "btn mode-row-btn";
-          uTag.textContent = state.uvOn ? "UV ON" : state.coverOpen ? "LOCKED" : "OFF";
-        }
+        // Subsystem badges
+        const bHeater = document.getElementById("badge-heater");
+        bHeater.textContent = state.heaterOn ? "ON 48°C" : "OFF";
+        bHeater.className = state.heaterOn
+          ? "text-[10px] font-mono px-1.5 rounded bg-amber-500 text-slate-950 font-extrabold"
+          : "text-[10px] font-mono px-1.5 rounded bg-slate-800 text-slate-400";
 
-        const mBtn = document.getElementById("btn-mist");
-        const mTag = document.getElementById("tag-mist");
-        if (mBtn && mTag) {
-          mBtn.className = state.mistOn ? "btn mode-row-btn on-mist" : "btn mode-row-btn";
-          mTag.textContent = state.mistOn ? "MIST ON" : state.coverOpen ? "LOCKED" : "OFF";
-        }
+        const bUv = document.getElementById("badge-uv");
+        bUv.textContent = state.uvOn ? "UV-C ON" : state.coverOpen ? "LOCKED" : "OFF";
+        bUv.className = state.uvOn
+          ? "text-[10px] font-mono px-1.5 rounded bg-violet-500 text-white font-extrabold"
+          : "text-[10px] font-mono px-1.5 rounded bg-slate-800 text-slate-400";
 
-        // Timer UI
-        const clockEl = document.getElementById("timer-clock");
-        const subEl = document.getElementById("timer-sub");
-        const barEl = document.getElementById("timer-bar");
-        const phaseEl = document.getElementById("seq-phase");
-        const startBtn = document.getElementById("btn-t-start");
+        const bMist = document.getElementById("badge-mist");
+        bMist.textContent = state.mistOn ? "SPRAYING" : state.coverOpen ? "LOCKED" : "OFF";
+        bMist.className = state.mistOn
+          ? "text-[10px] font-mono px-1.5 rounded bg-cyan-400 text-slate-950 font-extrabold"
+          : "text-[10px] font-mono px-1.5 rounded bg-slate-800 text-slate-400";
 
-        if (clockEl) clockEl.textContent = fmtMMSS(state.timerRemainingSec);
-        if (subEl) subEl.textContent = `ตั้งไว้: ${Math.round(state.timerSelectedSec / 60)} นาที`;
-        const ratio = Math.max(0, Math.min(1, state.timerRemainingSec / Math.max(1, state.timerSelectedSec)));
-        if (barEl) barEl.style.width = `${(ratio * 100).toFixed(1)}%`;
+        // Timer & Telemetry
+        document.getElementById("live-telemetry").textContent = `${state.temp.toFixed(1)}°C • ${Math.round(state.humidity)}% RH`;
+        document.getElementById("timer-display").textContent = formatTime(state.remainingSec);
+        const pct = Math.max(0, Math.min(100, (state.remainingSec / Math.max(1, state.selectedMins * 60)) * 100));
+        document.getElementById("timer-progress").style.width = `${pct.toFixed(1)}%`;
 
-        if (phaseEl) {
-          if (state.seqStage === "drying") phaseEl.textContent = state.timerRunning ? "กำลังอบลมร้อน" : "หยุดชั่วคราว";
-          else if (state.seqStage === "post_uv") phaseEl.textContent = state.coverOpen ? "รอปิดฝาเพื่อ UV-C" : `ฆ่าเชื้อ UV-C (${Math.ceil(state.postSec)}วิ)`;
-          else if (state.seqStage === "post_mist") phaseEl.textContent = state.coverOpen ? "งดพ่น (เปิดฝา)" : "พ่นละอองน้ำหอม (2วิ)";
-          else if (state.seqStage === "done") phaseEl.textContent = "เสร็จสิ้นรอบ";
-          else phaseEl.textContent = "พร้อมเริ่มรอบ";
-        }
+        const cStatus = document.getElementById("cycle-status");
+        if (state.coverOpen) cStatus.textContent = "หยุดชั่วคราว (ฝาครอบเปิดอยู่)";
+        else if (state.phase === "drying") cStatus.textContent = "ขั้นที่ 1/3: กำลังอบลมร้อน PTC + ไล่ความชื้น";
+        else if (state.phase === "uv") cStatus.textContent = `ขั้นที่ 2/3: ฆ่าเชื้อ UV-C Ozone (${Math.ceil(state.postTimer)}วิ)`;
+        else if (state.phase === "mist") cStatus.textContent = `ขั้นที่ 3/3: พ่นละอองน้ำหอมดับกลิ่น (${Math.ceil(state.postTimer)}วิ)`;
+        else if (state.phase === "done") cStatus.textContent = "เสร็จสิ้นรอบการทำงานสมบูรณ์ ✓";
+        else cStatus.textContent = "พร้อมทำงาน (Standby)";
 
-        if (startBtn) {
-          if (state.seqStage === "drying" && state.timerRunning) {
-            startBtn.textContent = "หยุดชั่วคราว";
-            startBtn.className = "btn btn-xs btn-amber";
-          } else if (state.seqStage === "drying" && !state.timerRunning) {
-            startBtn.textContent = "อบต่อ";
-            startBtn.className = "btn btn-xs btn-emerald";
-          } else {
-            startBtn.textContent = "เริ่มตั้งเวลาอบ";
-            startBtn.className = "btn btn-xs btn-primary";
-          }
-          startBtn.style.flex = "1";
-        }
+        document.getElementById("explode-label").textContent = `${Math.round(state.explode * 100)}%`;
 
-        const selMin = Math.round(state.timerSelectedSec / 60);
-        document.querySelectorAll(".preset-5 .btn").forEach((b) => {
-          b.className = Number(b.getAttribute("data-min")) === selMin ? "btn picked" : "btn";
+        // 6-Step Guide
+        const stepObj = BUILD_STEPS[state.activeStep - 1] || BUILD_STEPS[0];
+        document.getElementById("step-indicator").textContent = `ขั้นที่ ${state.activeStep} / 6`;
+        document.getElementById("guide-title").textContent = stepObj.title;
+        document.getElementById("guide-desc").textContent = stepObj.desc;
+        document.getElementById("guide-hw").innerHTML = `<strong>อุปกรณ์หลัก:</strong> ${stepObj.hw}`;
+
+        document.querySelectorAll(".step-btn").forEach((b) => {
+          const n = Number(b.getAttribute("data-step"));
+          b.className = n === state.activeStep
+            ? "step-btn py-1.5 rounded-lg text-xs font-extrabold bg-sky-500 text-slate-950"
+            : "step-btn py-1.5 rounded-lg text-xs font-extrabold glass-sub text-slate-200 hover:bg-slate-700";
         });
 
-        const sensEl = document.getElementById("sensor-readout");
-        if (sensEl) sensEl.textContent = `${state.temp.toFixed(1)}°C • ${Math.round(state.humidity)}%`;
-
-        // Part chips & inspector
-        const chipsEl = document.getElementById("part-chips");
-        if (chipsEl) {
-          chipsEl.innerHTML = "";
-          Object.keys(PARTS).forEach((key) => {
-            const p = PARTS[key];
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.className = state.selectedPart === key ? "part-chip selected-chip" : "part-chip";
-            btn.textContent = `${p.step}. ${p.name.split(" ")[0]}`;
-            btn.addEventListener("click", () => {
-              state.selectedPart = key;
-              renderUI();
-            });
-            chipsEl.appendChild(btn);
+        // Right Inspector Chips & Detail
+        const chipContainer = document.getElementById("part-selector-chips");
+        chipContainer.innerHTML = "";
+        Object.keys(PART_SPECS).forEach((key) => {
+          const spec = PART_SPECS[key];
+          const chip = document.createElement("button");
+          chip.type = "button";
+          chip.className = key === state.selectedPart
+            ? "px-2 py-1 rounded-full text-[10px] font-bold bg-sky-500 text-slate-950"
+            : "px-2 py-1 rounded-full text-[10px] font-semibold glass-sub text-slate-300 hover:bg-slate-700";
+          chip.textContent = spec.name.split(" ")[0];
+          chip.addEventListener("click", () => {
+            state.selectedPart = key;
+            syncUI();
           });
+          chipContainer.appendChild(chip);
+        });
+
+        const curSpec = PART_SPECS[state.selectedPart] || PART_SPECS.base_housing;
+        document.getElementById("part-detail-card").innerHTML = `
+          <div class="font-extrabold text-sm text-white">${curSpec.name}</div>
+          <div class="text-[11px] text-sky-300 font-semibold">ประกอบในขั้นตอนที่ ${curSpec.step}</div>
+          <div class="bg-slate-900/75 p-2 rounded-lg border border-slate-700/70">
+            <div class="text-[10px] font-bold text-amber-300">วัสดุ &amp; สเปกฮาร์ดแวร์</div>
+            <div class="text-[11px] text-slate-200 mt-0.5">${curSpec.material}</div>
+          </div>
+          <div class="bg-slate-900/75 p-2 rounded-lg border border-slate-700/70">
+            <div class="text-[10px] font-bold text-sky-300">รายละเอียดการติดตั้ง</div>
+            <div class="text-[11px] text-slate-200 mt-0.5">${curSpec.detail}</div>
+          </div>
+          <div class="bg-slate-900/75 p-2 rounded-lg border border-slate-700/70">
+            <div class="text-[10px] font-bold text-emerald-300">หน้าที่ในระบบ</div>
+            <div class="text-[11px] text-slate-200 mt-0.5">${curSpec.role}</div>
+          </div>
+        `;
+
+        updateOledScreen();
+      }
+
+      function applyStep(num) {
+        const s = Math.max(1, Math.min(6, Number(num) || 1));
+        state.activeStep = s;
+        const info = BUILD_STEPS[s - 1];
+        state.cutaway = info.cutaway;
+        state.coverOpen = info.coverOpen;
+        state.explode = info.explode;
+        state.selectedPart = info.focusPart;
+        document.getElementById("explode-range").value = String(Math.round(state.explode * 100));
+        setCameraView(info.cam);
+        syncUI();
+      }
+
+      // Bind DOM Events
+      document.querySelectorAll(".cam-btn").forEach((btn) => {
+        btn.addEventListener("click", () => setCameraView(btn.getAttribute("data-cam")));
+      });
+
+      document.getElementById("btn-power").addEventListener("click", () => {
+        if (state.coverOpen) {
+          showToast("กรุณาปิดฝาครอบให้สนิทก่อนเริ่มรอบอบอัตโนมัติ");
+          return;
         }
-
-        const partObj = PARTS[state.selectedPart] || PARTS.base_box;
-        const inspTitle = document.getElementById("insp-title");
-        const inspBadge = document.getElementById("insp-step-badge");
-        const inspContent = document.getElementById("insp-content");
-        if (inspTitle) inspTitle.textContent = partObj.name;
-        if (inspBadge) inspBadge.textContent = `ขั้นที่ ${partObj.step}`;
-        if (inspContent) {
-          inspContent.innerHTML = `
-            <div class="spec-box">
-              <div class="spec-label" style="color:var(--brand-deep);">วัสดุ / ชิ้นส่วนที่หาซื้อจริง</div>
-              <div>${partObj.offShelf}</div>
-            </div>
-            <div class="spec-box">
-              <div class="spec-label" style="color:#b45309;">ขนาดและตำแหน่งติดตั้ง</div>
-              <div>${partObj.size}</div>
-            </div>
-            <div class="spec-box">
-              <div class="spec-label" style="color:#047857;">หน้าที่ในโครงงาน</div>
-              <div>${partObj.role}</div>
-            </div>
-          `;
-        }
-      }
-
-      /* =====================================================================
-         5. PHOTOREALISTIC-STYLE DEPTH-SORTED 3D SHADER (CANVAS 2D)
-         ===================================================================== */
-      const canvas = document.getElementById("scene-canvas");
-      const ctx = canvas.getContext("2d");
-      const hitBoxes = [];
-      const renderQueue = [];
-
-      // Soft studio directional key light in camera-aligned world coordinates
-      const LIGHT_DIR = (() => {
-        const lx = -0.45, ly = 0.78, lz = 0.43;
-        const len = Math.hypot(lx, ly, lz) || 1;
-        return [lx / len, ly / len, lz / len];
-      })();
-
-      function resizeCanvas() {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const w = Math.max(1, window.innerWidth);
-        const h = Math.max(1, window.innerHeight);
-        canvas.width = Math.floor(w * dpr);
-        canvas.height = Math.floor(h * dpr);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      }
-
-      function project3D(x, y, z) {
-        const cosY = Math.cos(cam.yaw);
-        const sinY = Math.sin(cam.yaw);
-        const x1 = x * cosY - z * sinY;
-        const z1 = x * sinY + z * cosY;
-
-        const cosP = Math.cos(cam.pitch);
-        const sinP = Math.sin(cam.pitch);
-        const y2 = y * cosP - z1 * sinP;
-        const z2 = y * sinP + z1 * cosP;
-
-        const fov = 790 * cam.zoom;
-        const dist = 10.6;
-        const scale = fov / Math.max(2.6, dist + z2);
-
-        const cx = window.innerWidth * 0.56 + cam.panX;
-        const cy = window.innerHeight * 0.54 + cam.panY;
-
-        return {
-          sx: cx + x1 * scale,
-          sy: cy - y2 * scale,
-          depth: z2,
-          scale: scale
-        };
-      }
-
-      function rotateWorldVec(vx, vy, vz) {
-        const cosY = Math.cos(cam.yaw);
-        const sinY = Math.sin(cam.yaw);
-        const x1 = vx * cosY - vz * sinY;
-        const z1 = vx * sinY + vz * cosY;
-        const cosP = Math.cos(cam.pitch);
-        const sinP = Math.sin(cam.pitch);
-        const y2 = vy * cosP - z1 * sinP;
-        const z2 = vy * sinP + z1 * cosP;
-        return [x1, y2, z2];
-      }
-
-      function shadeColor(hex, diffuse, specular, alpha) {
-        const clean = hex.replace("#", "");
-        const num = parseInt(clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean, 16);
-        const r0 = (num >> 16) & 255;
-        const g0 = (num >> 8) & 255;
-        const b0 = num & 255;
-
-        const light = 0.56 + Math.max(0, diffuse) * 0.52;
-        const specAdd = Math.max(0, specular) * 68;
-
-        const r = Math.min(255, Math.max(0, Math.round(r0 * light + specAdd)));
-        const g = Math.min(255, Math.max(0, Math.round(g0 * light + specAdd)));
-        const b = Math.min(255, Math.max(0, Math.round(b0 * light + specAdd)));
-
-        if (typeof alpha === "number" && alpha < 1) {
-          return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`;
-        }
-        return `rgb(${r}, ${g}, ${b})`;
-      }
-
-      function isHighlighted(partKey) {
-        const stepInfo = BUILD_STEPS[state.activeStep - 1];
-        const inStep = stepInfo && Array.isArray(stepInfo.highlightParts) && stepInfo.highlightParts.includes(partKey);
-        return state.selectedPart === partKey || inStep;
-      }
-
-      function enqueueBox3D(cx, cy, cz, w, h, d, opts) {
-        const o = opts || {};
-        const hw = w / 2, hh = h / 2, hd = d / 2;
-        const verts = [
-          [cx - hw, cy - hh, cz - hd],
-          [cx + hw, cy - hh, cz - hd],
-          [cx + hw, cy + hh, cz - hd],
-          [cx - hw, cy + hh, cz - hd],
-          [cx - hw, cy - hh, cz + hd],
-          [cx + hw, cy - hh, cz + hd],
-          [cx + hw, cy + hh, cz + hd],
-          [cx - hw, cy + hh, cz + hd]
-        ];
-        const pts = verts.map(([x, y, z]) => project3D(x, y, z));
-
-        const faceSpecs = [
-          { idx: [4, 5, 6, 7], n: [0, 0, 1] },
-          { idx: [1, 0, 3, 2], n: [0, 0, -1] },
-          { idx: [5, 1, 2, 6], n: [1, 0, 0] },
-          { idx: [0, 4, 7, 3], n: [-1, 0, 0] },
-          { idx: [3, 2, 6, 7], n: [0, 1, 0] },
-          { idx: [0, 1, 5, 4], n: [0, -1, 0] }
-        ];
-
-        const hi = o.partKey ? isHighlighted(o.partKey) : false;
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
-        faceSpecs.forEach((fs) => {
-          const avgDepth = (pts[fs.idx[0]].depth + pts[fs.idx[1]].depth + pts[fs.idx[2]].depth + pts[fs.idx[3]].depth) * 0.25;
-          const rn = rotateWorldVec(fs.n[0], fs.n[1], fs.n[2]);
-          const diff = rn[0] * LIGHT_DIR[0] + rn[1] * LIGHT_DIR[1] + rn[2] * LIGHT_DIR[2];
-          const hx = (rn[0] + LIGHT_DIR[0]) * 0.5;
-          const hy = (rn[1] + LIGHT_DIR[1]) * 0.5;
-          const hz = (rn[2] + LIGHT_DIR[2]) * 0.5;
-          const hLen = Math.hypot(hx, hy, hz) || 1;
-          const spec = Math.pow(Math.max(0, (rn[0] * hx + rn[1] * hy + rn[2] * hz) / hLen), o.shininess || 18) * (o.specStrength ?? 0.55);
-
-          renderQueue.push({
-            depth: avgDepth,
-            draw: () => {
-              let fMinX = Infinity, fMinY = Infinity, fMaxX = -Infinity, fMaxY = -Infinity;
-              ctx.beginPath();
-              fs.idx.forEach((i, k) => {
-                const p = pts[i];
-                if (k === 0) ctx.moveTo(p.sx, p.sy);
-                else ctx.lineTo(p.sx, p.sy);
-                fMinX = Math.min(fMinX, p.sx);
-                fMinY = Math.min(fMinY, p.sy);
-                fMaxX = Math.max(fMaxX, p.sx);
-                fMaxY = Math.max(fMaxY, p.sy);
-              });
-              ctx.closePath();
-
-              if (o.baseHex) {
-                ctx.fillStyle = shadeColor(o.baseHex, diff, spec, o.alpha ?? 1);
-                ctx.fill();
-
-                if (spec > 0.14 && (o.alpha ?? 1) > 0.25) {
-                  const g = ctx.createLinearGradient(fMinX, fMinY, fMaxX, fMaxY);
-                  g.addColorStop(0, `rgba(255, 255, 255, ${Math.min(0.42, spec * 0.38).toFixed(3)})`);
-                  g.addColorStop(1, "rgba(255, 255, 255, 0)");
-                  ctx.fillStyle = g;
-                  ctx.fill();
-                }
-              }
-
-              if (o.emissiveColor) {
-                ctx.save();
-                ctx.shadowColor = o.emissiveColor;
-                ctx.shadowBlur = 16 * cam.zoom;
-                ctx.strokeStyle = o.emissiveColor;
-                ctx.lineWidth = 2.2;
-                ctx.stroke();
-                ctx.restore();
-              }
-
-              ctx.strokeStyle = hi ? "#0284c7" : (o.stroke || "rgba(30, 41, 59, 0.55)");
-              ctx.lineWidth = hi ? (o.lineWidth || 1.4) + 1.1 : (o.lineWidth || 1.15);
-              ctx.stroke();
-            }
-          });
-
-          fs.idx.forEach((i) => {
-            minX = Math.min(minX, pts[i].sx);
-            minY = Math.min(minY, pts[i].sy);
-            maxX = Math.max(maxX, pts[i].sx);
-            maxY = Math.max(maxY, pts[i].sy);
-          });
-        });
-
-        if (o.partKey && isFinite(minX)) {
-          hitBoxes.push({ partKey: o.partKey, x1: minX, y1: minY, x2: maxX, y2: maxY });
-        }
-      }
-
-      function enqueueCylinderY(cx, yBot, yTop, r, opts) {
-        const o = opts || {};
-        const segs = 24;
-        const bot = [];
-        const top = [];
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        const zCenter = o.zCenter ?? 0.14;
-
-        for (let i = 0; i <= segs; i++) {
-          const a = (i / segs) * Math.PI * 2;
-          const px = cx + Math.cos(a) * r;
-          const pz = zCenter + Math.sin(a) * r;
-          const pb = project3D(px, yBot, pz);
-          const pt = project3D(px, yTop, pz);
-          bot.push(pb);
-          top.push(pt);
-          minX = Math.min(minX, pb.sx, pt.sx);
-          minY = Math.min(minY, pb.sy, pt.sy);
-          maxX = Math.max(maxX, pb.sx, pt.sx);
-          maxY = Math.max(maxY, pb.sy, pt.sy);
-        }
-
-        const avgDepth = (bot.reduce((s, p) => s + p.depth, 0) + top.reduce((s, p) => s + p.depth, 0)) / ((segs + 1) * 2);
-        const hi = o.partKey ? isHighlighted(o.partKey) : false;
-
-        renderQueue.push({
-          depth: avgDepth,
-          draw: () => {
-            const cylGrad = ctx.createLinearGradient(minX, minY, maxX, minY);
-            cylGrad.addColorStop(0.0, shadeColor(o.baseHex || "#ffffff", -0.2, 0, o.alpha ?? 1));
-            cylGrad.addColorStop(0.32, shadeColor(o.baseHex || "#ffffff", 0.55, 0.72, o.alpha ?? 1));
-            cylGrad.addColorStop(0.65, shadeColor(o.baseHex || "#ffffff", 0.15, 0.12, o.alpha ?? 1));
-            cylGrad.addColorStop(1.0, shadeColor(o.baseHex || "#ffffff", -0.35, 0, o.alpha ?? 1));
-
-            ctx.beginPath();
-            for (let i = 0; i <= segs; i++) {
-              if (i === 0) ctx.moveTo(top[i].sx, top[i].sy);
-              else ctx.lineTo(top[i].sx, top[i].sy);
-            }
-            for (let i = segs; i >= 0; i--) {
-              ctx.lineTo(bot[i].sx, bot[i].sy);
-            }
-            ctx.closePath();
-            ctx.fillStyle = cylGrad;
-            ctx.fill();
-            ctx.strokeStyle = hi ? "#0284c7" : (o.stroke || "#334155");
-            ctx.lineWidth = hi ? 2.2 : 1.25;
-            ctx.stroke();
-
-            ctx.beginPath();
-            for (let i = 0; i <= segs; i++) {
-              if (i === 0) ctx.moveTo(top[i].sx, top[i].sy);
-              else ctx.lineTo(top[i].sx, top[i].sy);
-            }
-            ctx.closePath();
-            ctx.fillStyle = shadeColor(o.rimHex || o.baseHex || "#f1f5f9", 0.65, 0.3, o.alpha ?? 1);
-            ctx.fill();
-            ctx.strokeStyle = hi ? "#0284c7" : (o.stroke || "#334155");
-            ctx.lineWidth = hi ? 2.0 : 1.15;
-            ctx.stroke();
-          }
-        });
-
-        if (o.partKey) {
-          hitBoxes.push({ partKey: o.partKey, x1: minX, y1: minY, x2: maxX, y2: maxY });
-        }
-      }
-
-      function enqueueSneaker(xC, yBase, zC, leftSide, elapsed) {
-        const bounce = state.heaterOn ? Math.sin(elapsed * 7.5 + (leftSide ? 0 : 1.2)) * 0.022 : 0;
-        const y0 = yBase + bounce;
-
-        // Vulcanized rubber outsole + midsole
-        enqueueBox3D(xC, y0 + 0.05, zC + 0.16, 0.7, 0.1, 1.5, {
-          baseHex: "#1e293b",
-          shininess: 24,
-          specStrength: 0.45,
-          partKey: "sneakers"
-        });
-        enqueueBox3D(xC, y0 + 0.13, zC + 0.16, 0.68, 0.07, 1.46, {
-          baseHex: "#f8fafc",
-          shininess: 14,
-          specStrength: 0.25,
-          partKey: "sneakers"
-        });
-        // Breathable mesh upper
-        enqueueBox3D(xC, y0 + 0.3, zC + 0.16, 0.62, 0.27, 1.32, {
-          baseHex: "#f1f5f9",
-          shininess: 10,
-          specStrength: 0.18,
-          partKey: "sneakers"
-        });
-        // Sporty side stripe + tongue
-        enqueueBox3D(xC, y0 + 0.31, zC + 0.18, 0.65, 0.085, 0.86, {
-          baseHex: leftSide ? "#0284c7" : "#0ea5e9",
-          shininess: 28,
-          specStrength: 0.5,
-          partKey: "sneakers"
-        });
-        enqueueBox3D(xC, y0 + 0.48, zC + 0.24, 0.34, 0.22, 0.38, {
-          baseHex: "#e2e8f0",
-          shininess: 12,
-          specStrength: 0.2,
-          partKey: "sneakers"
-        });
-        // Collar cuff
-        enqueueCylinderY(xC, y0 + 0.42, y0 + 0.72, 0.27, {
-          zCenter: zC + 0.04,
-          baseHex: "#cbd5e1",
-          rimHex: "#334155",
-          partKey: "sneakers"
-        });
-      }
-
-      function renderScene(elapsed) {
-        hitBoxes.length = 0;
-        renderQueue.length = 0;
-
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-
-        // Clean architectural studio backdrop + perspective floor grid
-        const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-        bgGrad.addColorStop(0, "#f1f5f9");
-        bgGrad.addColorStop(0.58, "#e2e8f0");
-        bgGrad.addColorStop(1, "#cbd5e1");
-        ctx.fillStyle = bgGrad;
-        ctx.fillRect(0, 0, w, h);
-
-        const exp = state.explode;
-        const baseY = 0.5 - exp * 0.42;
-        const floorY = baseY - 0.52;
-
-        // Subtle studio floor grid lines for depth grounding
-        ctx.save();
-        ctx.strokeStyle = "rgba(15, 23, 42, 0.055)";
-        ctx.lineWidth = 1;
-        for (let g = -5; g <= 5; g++) {
-          const pA = project3D(g * 1.1, floorY, -5.5);
-          const pB = project3D(g * 1.1, floorY, 5.5);
-          ctx.beginPath();
-          ctx.moveTo(pA.sx, pA.sy);
-          ctx.lineTo(pB.sx, pB.sy);
-          ctx.stroke();
-
-          const pC = project3D(-5.5, floorY, g * 1.1);
-          const pD = project3D(5.5, floorY, g * 1.1);
-          ctx.beginPath();
-          ctx.moveTo(pC.sx, pC.sy);
-          ctx.lineTo(pD.sx, pD.sy);
-          ctx.stroke();
-        }
-        ctx.restore();
-
-        // Soft contact shadow under the machine
-        const pSh = project3D(0, floorY + 0.01, 0);
-        const shGrad = ctx.createRadialGradient(pSh.sx, pSh.sy + 8, 12 * cam.zoom, pSh.sx, pSh.sy + 8, 215 * cam.zoom);
-        shGrad.addColorStop(0, "rgba(15, 23, 42, 0.24)");
-        shGrad.addColorStop(0.65, "rgba(15, 23, 42, 0.09)");
-        shGrad.addColorStop(1, "rgba(15, 23, 42, 0)");
-        ctx.fillStyle = shGrad;
-        ctx.beginPath();
-        ctx.ellipse(pSh.sx, pSh.sy + 8, 215 * cam.zoom, 72 * cam.zoom, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Rubber feet under base box
-        [[-1.45, -1.1], [1.45, -1.1], [-1.45, 1.1], [1.45, 1.1]].forEach(([fx, fz]) => {
-          enqueueCylinderY(fx, baseY - 0.53, baseY - 0.46, 0.14, {
-            zCenter: fz,
-            baseHex: "#1e293b",
-            shininess: 22,
-            partKey: "base_box"
-          });
-        });
-
-        // 1. Base Box (Plaswood / ABS)
-        if (state.cutaway) {
-          enqueueBox3D(0, baseY - 0.44, 0, 3.5, 0.12, 2.8, { baseHex: "#e2e8f0", shininess: 20, partKey: "base_box" });
-          enqueueBox3D(0, baseY, -1.34, 3.5, 0.88, 0.12, { baseHex: "#cbd5e1", shininess: 20, partKey: "base_box" });
-          enqueueBox3D(-1.69, baseY, 0, 0.12, 0.88, 2.8, { baseHex: "#e2e8f0", shininess: 20, partKey: "base_box" });
-          enqueueBox3D(1.69, baseY, 0, 0.12, 0.88, 2.8, { baseHex: "#cbd5e1", shininess: 20, partKey: "base_box" });
+        if (state.running) {
+          state.running = false;
+          state.heaterOn = false;
+          state.uvOn = false;
+          state.mistOn = false;
+          showToast("หยุดการทำงานชั่วคราว");
         } else {
-          enqueueBox3D(0, baseY, 0, 3.5, 1.0, 2.8, {
-            baseHex: "#f1f5f9",
-            alpha: 0.98,
-            shininess: 24,
-            specStrength: 0.45,
-            partKey: "base_box"
-          });
-        }
-
-        // Thermal divider wall inside base
-        enqueueBox3D(0.28, baseY, 0, 0.08, 0.82, 2.55, {
-          baseHex: "#94a3b8",
-          shininess: 22,
-          partKey: "base_box"
-        });
-
-        // PTC 12V Ceramic Heater + Blower Fan (left chamber)
-        enqueueBox3D(-0.86, baseY - 0.14, -0.32, 0.68, 0.44, 0.54, {
-          baseHex: state.heaterOn ? "#f59e0b" : "#64748b",
-          emissiveColor: state.heaterOn ? "rgba(245, 158, 11, 0.7)" : null,
-          shininess: 45,
-          specStrength: 0.75,
-          partKey: "ptc_heater"
-        });
-        enqueueCylinderY(-0.86, baseY - 0.36, baseY + 0.06, 0.31, {
-          zCenter: -0.32,
-          baseHex: state.heaterOn ? "#fbbf24" : "#475569",
-          shininess: 40,
-          partKey: "ptc_heater"
-        });
-
-        // ESP32 Microcontroller + Relay Module (right chamber)
-        enqueueBox3D(0.76, baseY - 0.24, 0.42, 0.54, 0.14, 0.34, {
-          baseHex: "#0f172a",
-          shininess: 50,
-          specStrength: 0.8,
-          partKey: "esp32_relay"
-        });
-        enqueueBox3D(0.76, baseY - 0.24, -0.22, 0.56, 0.18, 0.42, {
-          baseHex: "#2563eb",
-          shininess: 45,
-          specStrength: 0.7,
-          partKey: "esp32_relay"
-        });
-
-        // Perfume Reservoir Bottle & Mini DC Pump (far right chamber)
-        enqueueCylinderY(1.36, baseY - 0.36, baseY + 0.22, 0.22, {
-          zCenter: 0.28,
-          baseHex: "#06b6d4",
-          alpha: 0.84,
-          shininess: 85,
-          specStrength: 1.0,
-          partKey: "perfume_pump"
-        });
-        enqueueBox3D(1.36, baseY - 0.22, -0.62, 0.28, 0.24, 0.24, {
-          baseHex: "#e2e8f0",
-          shininess: 45,
-          partKey: "perfume_pump"
-        });
-
-        // Front OLED Display bezel
-        enqueueBox3D(-1.05, baseY + 0.04, 1.43, 0.84, 0.48, 0.07, {
-          baseHex: "#091526",
-          shininess: 70,
-          specStrength: 0.85,
-          partKey: "oled_display"
-        });
-
-        // Base top deck
-        const deckY = baseY + 0.48 + exp * 0.25;
-        enqueueBox3D(0, deckY, 0, 3.5, 0.08, 2.8, {
-          baseHex: "#e2e8f0",
-          alpha: 0.94,
-          shininess: 26,
-          partKey: "base_box"
-        });
-
-        // 2. Two PVC Air Nozzles (1.5 inch) + mounting collars
-        const nBot = deckY + 0.04;
-        const nTop = nBot + 1.45 + exp * 0.25;
-        [-0.78, 0.78].forEach((nx) => {
-          enqueueCylinderY(nx, nBot, nBot + 0.07, 0.27, {
-            zCenter: 0.14,
-            baseHex: "#cbd5e1",
-            shininess: 40,
-            partKey: "pvc_nozzles"
-          });
-          enqueueCylinderY(nx, nBot + 0.07, nTop, 0.19, {
-            zCenter: 0.14,
-            baseHex: "#ffffff",
-            shininess: 55,
-            specStrength: 0.75,
-            partKey: "pvc_nozzles"
-          });
-        });
-
-        // 3. Sneakers
-        const shoeBaseY = nTop - 0.35 + exp * 0.55;
-        enqueueSneaker(-0.78, shoeBaseY, 0.12, true, elapsed);
-        enqueueSneaker(0.78, shoeBaseY, 0.12, false, elapsed);
-
-        // 4. Clear Acrylic Cover Box
-        const covY = 2.52 + exp * 1.75 + (state.coverOpen ? 0.55 : 0);
-        const covZ = state.coverOpen ? -0.45 : 0;
-
-        if (state.cutaway) {
-          enqueueBox3D(0, covY + 1.44, covZ, 3.5, 0.12, 2.8, {
-            baseHex: "#bae6fd",
-            alpha: 0.34,
-            shininess: 90,
-            specStrength: 1.0,
-            partKey: "cover_box"
-          });
-          enqueueBox3D(0, covY, covZ - 1.34, 3.5, 2.88, 0.12, {
-            baseHex: "#bae6fd",
-            alpha: 0.24,
-            shininess: 90,
-            specStrength: 0.9,
-            partKey: "cover_box"
-          });
-          enqueueBox3D(-1.69, covY, covZ, 0.12, 2.88, 2.8, {
-            baseHex: "#bae6fd",
-            alpha: 0.22,
-            shininess: 90,
-            specStrength: 0.9,
-            partKey: "cover_box"
-          });
-          enqueueBox3D(1.69, covY, covZ, 0.12, 2.88, 2.8, {
-            baseHex: "#bae6fd",
-            alpha: 0.22,
-            shininess: 90,
-            specStrength: 0.9,
-            partKey: "cover_box"
-          });
-        } else {
-          enqueueBox3D(0, covY, covZ, 3.5, 3.0, 2.8, {
-            baseHex: state.uvOn && !state.coverOpen ? "#c4b5fd" : "#bae6fd",
-            alpha: 0.2,
-            shininess: 95,
-            specStrength: 1.0,
-            stroke: state.coverOpen ? "#e11d48" : "#0284c7",
-            partKey: "cover_box"
-          });
-        }
-
-        // UV-C Lamp Tube under cover top
-        enqueueBox3D(0, covY + 1.24, covZ - 0.12, 1.48, 0.11, 0.16, {
-          baseHex: state.uvOn && !state.coverOpen ? "#8b5cf6" : "#64748b",
-          emissiveColor: state.uvOn && !state.coverOpen ? "rgba(139, 92, 246, 0.85)" : null,
-          shininess: 85,
-          specStrength: 0.95,
-          partKey: "uv_lamp"
-        });
-
-        // Mist Nozzle + Silicone Tube
-        const mzX = 1.64;
-        const mzY = covY + 0.72;
-        const mzZ = covZ + 0.14;
-        enqueueBox3D(mzX, mzY, mzZ, 0.16, 0.16, 0.16, {
-          baseHex: "#0891b2",
-          shininess: 65,
-          partKey: "mist_nozzle"
-        });
-
-        // Sort back-to-front by average Z depth
-        renderQueue.sort((a, b) => b.depth - a.depth);
-        renderQueue.forEach((item) => item.draw());
-
-        // Crisp OLED telemetry overlay
-        const pOled = project3D(-1.05, baseY + 0.04, 1.47);
-        ctx.save();
-        ctx.fillStyle = "#38bdf8";
-        ctx.font = `bold ${Math.max(8, Math.round(10 * cam.zoom))}px monospace`;
-        ctx.textAlign = "center";
-        ctx.fillText(`${state.temp.toFixed(1)}C ${Math.round(state.humidity)}%`, pOled.sx, pOled.sy + 3);
-        ctx.restore();
-
-        // Silicone hose curve
-        const t1 = project3D(1.36, baseY - 0.12, 0.28);
-        const t2 = project3D(1.64, (baseY + mzY) * 0.5, 0.22);
-        const t3 = project3D(mzX, mzY, mzZ);
-        ctx.save();
-        ctx.strokeStyle = "#0891b2";
-        ctx.lineWidth = Math.max(2, 3 * cam.zoom);
-        ctx.beginPath();
-        ctx.moveTo(t1.sx, t1.sy);
-        ctx.quadraticCurveTo(t2.sx, t2.sy, t3.sx, t3.sy);
-        ctx.stroke();
-        ctx.restore();
-
-        // Warm airflow streams when heater is ON
-        if (state.heaterOn) {
-          ctx.save();
-          ctx.strokeStyle = "rgba(217, 119, 6, 0.85)";
-          ctx.lineWidth = 2.2;
-          [-0.78, 0.78].forEach((nx, i) => {
-            for (let k = 0; k < 3; k++) {
-              const p = ((elapsed * 1.5 + i * 0.3 + k * 0.33) % 1);
-              const ay = nTop + p * 1.15;
-              const ax = nx + Math.sin(elapsed * 5 + k) * 0.15;
-              const a = project3D(ax, ay - 0.18, 0.14);
-              const b = project3D(ax, ay + 0.12, 0.14);
-              ctx.beginPath();
-              ctx.moveTo(a.sx, a.sy);
-              ctx.lineTo(b.sx, b.sy);
-              ctx.stroke();
-            }
-          });
-          ctx.restore();
-        }
-
-        // 3D Perfume Mist Spray Cone & Droplets
-        if (state.mistOn && !state.coverOpen) {
-          const p0 = project3D(mzX - 0.08, mzY - 0.04, mzZ);
-          const pA = project3D(0.15, mzY - 0.85, mzZ - 0.35);
-          const pB = project3D(0.15, mzY - 0.85, mzZ + 0.35);
-
-          ctx.save();
-          const coneGrad = ctx.createLinearGradient(p0.sx, p0.sy, (pA.sx + pB.sx) * 0.5, (pA.sy + pB.sy) * 0.5);
-          coneGrad.addColorStop(0, "rgba(6, 182, 212, 0.34)");
-          coneGrad.addColorStop(1, "rgba(6, 182, 212, 0.04)");
-          ctx.fillStyle = coneGrad;
-          ctx.strokeStyle = "rgba(8, 145, 178, 0.65)";
-          ctx.lineWidth = 1.2;
-          ctx.beginPath();
-          ctx.moveTo(p0.sx, p0.sy);
-          ctx.lineTo(pA.sx, pA.sy);
-          ctx.lineTo(pB.sx, pB.sy);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-
-          for (let i = 0; i < 28; i++) {
-            const u = ((elapsed * 1.9 + i * 0.11) % 1);
-            const sp = Math.sin(i * 2.1) * 0.5 * u;
-            const dx = mzX - 0.1 - u * 1.45;
-            const dy = mzY - 0.05 - u * 0.78 - Math.abs(sp) * 0.25;
-            const dz = mzZ + sp * 0.65;
-            const pd = project3D(dx, dy, dz);
-            ctx.fillStyle = "rgba(6, 182, 212, 0.88)";
-            ctx.beginPath();
-            ctx.arc(pd.sx, pd.sy, Math.max(2, 3.2 * cam.zoom * (1 - u * 0.38)), 0, Math.PI * 2);
-            ctx.fill();
+          if (state.remainingSec <= 0 || state.phase === "done") {
+            state.remainingSec = state.selectedMins * 60;
           }
-          ctx.restore();
-        }
-      }
-
-      /* =====================================================================
-         6. TIMER & AUTO POST-DRYING SEQUENCE
-         ===================================================================== */
-      function stepTimer(dt) {
-        if (state.seqStage === "drying" && state.timerRunning) {
-          state.timerRemainingSec = Math.max(0, state.timerRemainingSec - dt);
-          if (state.timerRemainingSec <= 0) {
-            state.timerRunning = false;
-            state.heaterOn = false;
-
-            if (state.autoSeq) {
-              state.seqStage = "post_uv";
-              state.postSec = 5.0;
-              if (!state.coverOpen) state.uvOn = true;
-              notify("ครบเวลาอบ! ปิดฮีตเตอร์และเริ่มฆ่าเชื้อ UV-C อัตโนมัติ");
-            } else {
-              state.seqStage = "done";
-              state.uvOn = false;
-              state.mistOn = false;
-              notify("ครบเวลาอบรองเท้าเรียบร้อยแล้ว");
-            }
-            renderUI();
-          } else {
-            renderUI();
-          }
-        } else if (state.seqStage === "post_uv") {
-          if (!state.coverOpen) {
-            state.uvOn = true;
-            state.postSec = Math.max(0, state.postSec - dt);
-          } else {
-            state.uvOn = false;
-          }
-          renderUI();
-
-          if (state.postSec <= 0) {
-            state.uvOn = false;
-            if (!state.coverOpen) {
-              state.seqStage = "post_mist";
-              state.postSec = 2.0;
-              state.mistOn = true;
-              notify("ฆ่าเชื้อ UV-C เสร็จ • พ่นละอองน้ำหอม 2 วินาที");
-            } else {
-              state.seqStage = "done";
-              state.mistOn = false;
-              notify("ฆ่าเชื้อ UV-C เสร็จ (งดพ่นน้ำหอมเพราะเปิดฝาครอบ)");
-            }
-            renderUI();
-          }
-        } else if (state.seqStage === "post_mist") {
-          if (state.coverOpen) {
-            state.mistOn = false;
-            state.seqStage = "done";
-            notify("เปิดฝาครอบ: หยุดพ่นละอองน้ำหอมอัตโนมัติ");
-            renderUI();
-            return;
-          }
-          state.mistOn = true;
-          state.postSec = Math.max(0, state.postSec - dt);
-          renderUI();
-
-          if (state.postSec <= 0) {
-            state.mistOn = false;
-            state.seqStage = "done";
-            renderUI();
-            notify("จบรอบอบ ฆ่าเชื้อ และพ่นละอองน้ำหอมสมบูรณ์");
-          }
-        }
-      }
-
-      function pickMinutes(mins) {
-        const m = Math.max(5, Math.min(180, mins));
-        clearTimeout(manualMistTimer);
-        state.timerRunning = false;
-        state.seqStage = "idle";
-        state.postSec = 0;
-        state.heaterOn = false;
-        state.uvOn = false;
-        state.mistOn = false;
-        state.timerSelectedSec = m * 60;
-        state.timerRemainingSec = m * 60;
-        renderUI();
-      }
-
-      /* =====================================================================
-         7. EVENT BINDINGS & MAIN LOOP
-         ===================================================================== */
-      function bindEvents() {
-        document.querySelectorAll("[data-cam]").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            applyCameraPreset(btn.getAttribute("data-cam"));
-          });
-        });
-
-        document.querySelectorAll("[data-step]").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            setBuildStep(btn.getAttribute("data-step"));
-          });
-        });
-
-        document.getElementById("btn-step-prev").addEventListener("click", () => {
-          setBuildStep(state.activeStep - 1);
-        });
-
-        document.getElementById("btn-step-next").addEventListener("click", () => {
-          setBuildStep(state.activeStep + 1);
-        });
-
-        document.getElementById("btn-cover").addEventListener("click", () => {
-          state.coverOpen = !state.coverOpen;
-          if (state.coverOpen) {
-            clearTimeout(manualMistTimer);
-            notify("เปิดฝาครอบ: ตัดไฟ UV-C และพ่นน้ำหอมอัตโนมัติ");
-          }
-          renderUI();
-        });
-
-        document.getElementById("btn-cutaway").addEventListener("click", () => {
-          state.cutaway = !state.cutaway;
-          renderUI();
-        });
-
-        const slider = document.getElementById("explode-slider");
-        slider.addEventListener("input", (e) => {
-          state.explode = (Number(e.target.value) || 0) / 100;
-          renderUI();
-        });
-
-        document.getElementById("btn-heater").addEventListener("click", () => {
-          state.heaterOn = !state.heaterOn;
-          renderUI();
-        });
-
-        document.getElementById("btn-uv").addEventListener("click", () => {
-          if (state.coverOpen) {
-            notify("ปิดฝาครอบก่อนเปิดหลอด UV-C เพื่อความปลอดภัย");
-            return;
-          }
-          state.uvOn = !state.uvOn;
-          renderUI();
-        });
-
-        document.getElementById("btn-mist").addEventListener("click", () => {
-          if (state.coverOpen) {
-            notify("ปิดฝาครอบก่อนพ่นละอองน้ำหอม");
-            return;
-          }
-          if (state.heaterOn) {
-            notify("แนะนำให้ปิดฮีตเตอร์ก่อนพ่นละอองน้ำหอม");
-          }
-          state.mistOn = !state.mistOn;
-          clearTimeout(manualMistTimer);
-          if (state.mistOn) {
-            manualMistTimer = setTimeout(() => {
-              state.mistOn = false;
-              renderUI();
-            }, 3000);
-          }
-          renderUI();
-        });
-
-        document.getElementById("btn-z-in").addEventListener("click", () => {
-          cam.targetZoom = Math.min(1.9, cam.targetZoom + 0.15);
-        });
-
-        document.getElementById("btn-z-out").addEventListener("click", () => {
-          cam.targetZoom = Math.max(0.65, cam.targetZoom - 0.15);
-        });
-
-        document.getElementById("btn-z-out").addEventListener("click", () => {
-          cam.zoom = Math.max(0.65, cam.zoom - 0.15);
-        });
-
-        document.getElementById("btn-t-minus").addEventListener("click", () => {
-          pickMinutes(Math.round(state.timerSelectedSec / 60) - 5);
-        });
-
-        document.getElementById("btn-t-plus").addEventListener("click", () => {
-          pickMinutes(Math.round(state.timerSelectedSec / 60) + 5);
-        });
-
-        document.querySelectorAll(".preset-5 .btn").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const m = Number(btn.getAttribute("data-min")) || 30;
-            pickMinutes(m);
-            notify(`ตั้งเวลาอบไว้ที่ ${m} นาที`);
-          });
-        });
-
-        document.getElementById("btn-t-start").addEventListener("click", () => {
-          if (state.seqStage === "drying" && state.timerRunning) {
-            state.timerRunning = false;
-            state.heaterOn = false;
-            renderUI();
-            notify("หยุดรอบการอบชั่วคราว");
-            return;
-          }
-          if (state.seqStage === "drying" && !state.timerRunning) {
-            state.timerRunning = true;
-            state.heaterOn = true;
-            renderUI();
-            notify("ดำเนินการอบลมร้อนต่อ");
-            return;
-          }
-          if (state.timerRemainingSec <= 0 || state.seqStage === "done") {
-            state.timerRemainingSec = state.timerSelectedSec;
-          }
-          state.seqStage = "drying";
-          state.timerRunning = true;
+          state.running = true;
+          state.phase = "drying";
           state.heaterOn = true;
           state.uvOn = false;
           state.mistOn = false;
-          renderUI();
-          notify(`เริ่มรอบการอบ ${Math.round(state.timerSelectedSec / 60)} นาที`);
-        });
+          showToast(`เริ่มรอบอบอัตโนมัติ ${state.selectedMins} นาที (อบลมร้อน → UV-C → พ่นน้ำหอม)`);
+        }
+        syncUI();
+      });
 
-        document.getElementById("btn-t-reset").addEventListener("click", () => {
-          pickMinutes(Math.round(state.timerSelectedSec / 60));
-          notify("รีเซ็ตเวลาเรียบร้อยแล้ว");
-        });
+      document.getElementById("btn-cover").addEventListener("click", () => {
+        state.coverOpen = !state.coverOpen;
+        clearTimeout(manualMistTimeout);
+        if (state.coverOpen) {
+          showToast("เปิดฝาครอบ: สวิตช์นิรภัยตัดไฟอัตโนมัติ!");
+        } else {
+          showToast("ปิดฝาครอบสนิท: สวิตช์นิรภัยพร้อมทำงาน");
+        }
+        syncUI();
+      });
 
-        const autoChk = document.getElementById("chk-auto-seq");
-        state.autoSeq = autoChk.checked;
-        autoChk.addEventListener("change", (e) => {
-          state.autoSeq = Boolean(e.target.checked);
-          if (!state.autoSeq && (state.seqStage === "post_uv" || state.seqStage === "post_mist")) {
-            state.seqStage = "done";
-            state.uvOn = false;
+      document.getElementById("btn-cutaway").addEventListener("click", () => {
+        state.cutaway = !state.cutaway;
+        syncUI();
+      });
+
+      document.getElementById("btn-heater").addEventListener("click", () => {
+        if (state.coverOpen) return showToast("ปิดฝาครอบก่อนเปิดฮีตเตอร์");
+        state.heaterOn = !state.heaterOn;
+        syncUI();
+      });
+
+      document.getElementById("btn-uv").addEventListener("click", () => {
+        if (state.coverOpen) return showToast("ปิดฝาครอบก่อนเปิดหลอด UV-C");
+        state.uvOn = !state.uvOn;
+        syncUI();
+      });
+
+      document.getElementById("btn-mist").addEventListener("click", () => {
+        if (state.coverOpen) return showToast("ปิดฝาครอบก่อนพ่นละอองน้ำหอม");
+        state.mistOn = !state.mistOn;
+        clearTimeout(manualMistTimeout);
+        if (state.mistOn) {
+          showToast("กำลังพ่นละอองน้ำหอมดับกลิ่น (3 วินาที)");
+          manualMistTimeout = setTimeout(() => {
             state.mistOn = false;
-            renderUI();
+            syncUI();
+          }, 3000);
+        }
+        syncUI();
+      });
+
+      document.querySelectorAll(".preset-min-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const m = Number(btn.getAttribute("data-mins")) || 30;
+          state.selectedMins = m;
+          state.remainingSec = m * 60;
+          state.running = false;
+          state.phase = "idle";
+          state.heaterOn = false;
+          state.uvOn = false;
+          state.mistOn = false;
+          document.querySelectorAll(".preset-min-btn").forEach((b) => {
+            b.className = Number(b.getAttribute("data-mins")) === m
+              ? "preset-min-btn px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-sky-500/25 border border-sky-400 text-sky-200"
+              : "preset-min-btn px-2 py-1 rounded-lg text-[11px] font-mono font-bold glass-sub hover:bg-slate-700";
+          });
+          syncUI();
+        });
+      });
+
+      document.querySelectorAll(".speed-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const sp = Number(btn.getAttribute("data-speed")) || 1;
+          state.simSpeed = sp;
+          document.querySelectorAll(".speed-btn").forEach((b) => {
+            b.className = Number(b.getAttribute("data-speed")) === sp
+              ? "speed-btn px-1.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-amber-500/25 border border-amber-400 text-amber-200"
+              : "speed-btn px-1.5 py-1 rounded-lg text-[10px] font-mono font-bold glass-sub hover:bg-slate-700";
+          });
+          showToast(`ความเร็วการจำลอง: ${sp}x`);
+        });
+      });
+
+      document.getElementById("explode-range").addEventListener("input", (e) => {
+        state.explode = (Number(e.target.value) || 0) / 100;
+        syncUI();
+      });
+
+      document.querySelectorAll(".step-btn").forEach((btn) => {
+        btn.addEventListener("click", () => applyStep(btn.getAttribute("data-step")));
+      });
+      document.getElementById("btn-prev-step").addEventListener("click", () => applyStep(state.activeStep - 1));
+      document.getElementById("btn-next-step").addEventListener("click", () => applyStep(state.activeStep + 1));
+
+      document.getElementById("btn-toggle-hud").addEventListener("click", () => {
+        state.hudCollapsed = !state.hudCollapsed;
+        const leftHud = document.getElementById("left-hud");
+        const icon = document.getElementById("hud-toggle-icon");
+        const label = document.getElementById("hud-toggle-label");
+        if (state.hudCollapsed) {
+          leftHud.classList.add("hidden");
+          icon.textContent = "▲";
+          label.textContent = "แสดงแผงควบคุม";
+        } else {
+          leftHud.classList.remove("hidden");
+          icon.textContent = "▼";
+          label.textContent = "ซ่อนแผงควบคุม";
+        }
+      });
+
+      document.getElementById("btn-close-inspector").addEventListener("click", () => {
+        const rightHud = document.getElementById("right-hud");
+        rightHud.classList.add("hidden");
+        rightHud.classList.remove("flex");
+      });
+
+      /* =====================================================================
+         9. REAL-TIME ANIMATION LOOP (PHYSICS, PARTICLES, GLOWS, TIMERS)
+         ===================================================================== */
+      const clock = new THREE.Clock();
+      let telemetryTick = 0;
+
+      function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(0.1, clock.getDelta());
+        const elapsed = clock.getElapsedTime();
+
+        // Smooth camera preset transition
+        if (camAnimating) {
+          camera.position.lerp(targetCamPos, Math.min(1, dt * 6));
+          controls.target.lerp(targetLookAt, Math.min(1, dt * 6));
+          if (camera.position.distanceTo(targetCamPos) < 0.03) {
+            camAnimating = false;
           }
-        });
+        }
+        controls.update();
 
-        const rightDock = document.getElementById("right-dock");
-        document.getElementById("btn-hide-right").addEventListener("click", () => {
-          rightDock.classList.remove("open-desktop", "open-mobile");
-        });
+        // Hinged Cover Smooth Rotation & Limit Switch Lever
+        const targetAngle = state.coverOpen ? 1.02 : 0.0;
+        state.coverAngle += (targetAngle - state.coverAngle) * Math.min(1, dt * 8);
+        coverHingePivot.rotation.x = -state.coverAngle;
+        limitLever.rotation.z = state.coverOpen ? 0.25 : 0.0;
 
-        // Pointer drag rotation + part hit test
-        canvas.addEventListener("pointerdown", (e) => {
-          cam.dragging = true;
-          cam.lastX = e.clientX;
-          cam.lastY = e.clientY;
-          cam.downX = e.clientX;
-          cam.downY = e.clientY;
-          canvas.classList.add("dragging");
-        });
+        // Exploded View Offsets
+        const ex = state.explode;
+        ptcGroup.position.y = ex * 0.35;
+        sneakersGroup.position.y = ex * 0.85;
+        coverHingePivot.position.y = 0.98 + ex * 1.45;
+        elecGroup.position.x = ex * 0.45;
 
-        window.addEventListener("pointermove", (e) => {
-          if (!cam.dragging) return;
-          const dx = e.clientX - cam.lastX;
-          const dy = e.clientY - cam.lastY;
-          cam.lastX = e.clientX;
-          cam.lastY = e.clientY;
-          cam.targetYaw += dx * 0.009;
-          cam.targetPitch = Math.max(0.08, Math.min(1.15, cam.targetPitch + dy * 0.008));
-          cam.yaw = cam.targetYaw;
-          cam.pitch = cam.targetPitch;
-        });
+        // Spinning Axial Fan & PTC Heater Glow
+        if (state.heaterOn) {
+          fanRotor.rotation.y += dt * 24;
+          ptcFinMat.emissiveIntensity = 0.75 + Math.sin(elapsed * 6) * 0.15;
+          ptcGlowLight.intensity = 1.6 + Math.sin(elapsed * 6) * 0.25;
+          airMat.opacity = 0.75;
+        } else {
+          ptcFinMat.emissiveIntensity = Math.max(0, ptcFinMat.emissiveIntensity - dt * 2);
+          ptcGlowLight.intensity = Math.max(0, ptcGlowLight.intensity - dt * 4);
+          airMat.opacity = Math.max(0, airMat.opacity - dt * 3);
+        }
 
-        window.addEventListener("pointerup", (e) => {
-          const moved = Math.hypot(e.clientX - cam.downX, e.clientY - cam.downY);
-          cam.dragging = false;
-          canvas.classList.remove("dragging");
-
-          if (moved < 6 && e.target === canvas) {
-            for (let i = hitBoxes.length - 1; i >= 0; i--) {
-              const b = hitBoxes[i];
-              if (e.clientX >= b.x1 && e.clientX <= b.x2 && e.clientY >= b.y1 && e.clientY <= b.y2) {
-                state.selectedPart = b.partKey;
-                if (window.innerWidth < 1024) {
-                  rightDock.classList.add("open-mobile");
-                  rightDock.classList.remove("open-desktop");
-                } else {
-                  rightDock.classList.add("open-desktop");
-                  rightDock.classList.remove("open-mobile");
-                }
-                renderUI();
-                break;
-              }
+        // Update Warm Airflow Particles
+        if (airMat.opacity > 0.02) {
+          const pos = airGeo.attributes.position.array;
+          for (let i = 0; i < airCount; i++) {
+            pos[i * 3 + 1] += airSpeeds[i] * dt * 1.35;
+            pos[i * 3] += Math.sin(elapsed * 4 + i) * 0.004;
+            if (pos[i * 3 + 1] > 2.65) {
+              pos[i * 3 + 1] = 0.95;
+              pos[i * 3] = (Math.random() - 0.5) * 2.1;
+              pos[i * 3 + 2] = (Math.random() - 0.5) * 1.5;
             }
           }
-        });
-
-        canvas.addEventListener(
-          "wheel",
-          (e) => {
-            e.preventDefault();
-            cam.targetZoom = Math.max(0.65, Math.min(1.9, cam.targetZoom - e.deltaY * 0.0008));
-            cam.zoom = cam.targetZoom;
-          },
-          { passive: false }
-        );
-
-        window.addEventListener("resize", () => {
-          resizeCanvas();
-          if (window.innerWidth >= 1024 && !rightDock.classList.contains("open-mobile")) {
-            rightDock.classList.add("open-desktop");
-          }
-        });
-      }
-
-      let lastT = performance.now();
-      let elapsed = 0;
-      let sensAccum = 0;
-
-      function animate(now) {
-        const dt = Math.min(0.1, (now - lastT) / 1000);
-        lastT = now;
-        elapsed += dt;
-        sensAccum += dt;
-
-        // Smooth camera interpolation toward preset/step targets
-        if (!cam.dragging) {
-          const lerpAlpha = Math.min(1, dt * 8.5);
-          cam.yaw += (cam.targetYaw - cam.yaw) * lerpAlpha;
-          cam.pitch += (cam.targetPitch - cam.pitch) * lerpAlpha;
-          cam.zoom += (cam.targetZoom - cam.zoom) * lerpAlpha;
-          cam.panX += (cam.targetPanX - cam.panX) * lerpAlpha;
-          cam.panY += (cam.targetPanY - cam.panY) * lerpAlpha;
+          airGeo.attributes.position.needsUpdate = true;
         }
 
-        stepTimer(dt);
+        // UV-C Lamp Glow & Volumetric Cone
+        if (state.uvOn && !state.coverOpen) {
+          uvTubeMat.emissiveIntensity = 2.2 + Math.sin(elapsed * 12) * 0.2;
+          uvGlowLight.intensity = 2.4;
+          uvConeMat.opacity = 0.16 + Math.sin(elapsed * 8) * 0.03;
+        } else {
+          uvTubeMat.emissiveIntensity = 0;
+          uvGlowLight.intensity = 0;
+          uvConeMat.opacity = 0;
+        }
 
-        if (sensAccum >= 0.8) {
-          sensAccum = 0;
+        // Perfume Atomized Mist Spray
+        if (state.mistOn && !state.coverOpen) {
+          mistMat.opacity = 0.85;
+          const mPos = mistGeo.attributes.position.array;
+          for (let i = 0; i < mistCount; i++) {
+            mistLife[i] += dt * 1.35;
+            if (mistLife[i] >= 1) mistLife[i] = 0;
+            const u = mistLife[i];
+            const spread = u * 0.85;
+            const angle = i * 2.39996;
+            mPos[i * 3] = 1.34 - u * 1.85 + Math.cos(angle) * spread * 0.45;
+            mPos[i * 3 + 1] = 2.68 - u * 1.35 + Math.sin(angle) * spread * 0.35;
+            mPos[i * 3 + 2] = 0.05 + Math.sin(angle * 1.7) * spread * 0.75;
+          }
+          mistGeo.attributes.position.needsUpdate = true;
+        } else {
+          mistMat.opacity = 0;
+        }
+
+        // Relay & Control Panel Status LEDs
+        ledMaterials[1].emissiveIntensity = state.heaterOn ? 1.8 : 0.12;
+        ledMaterials[2].emissiveIntensity = state.uvOn || state.mistOn ? 1.8 : 0.12;
+        relayLed1Mat.emissiveIntensity = state.heaterOn ? 2.0 : 0.1;
+        relayLed2Mat.emissiveIntensity = state.uvOn || state.mistOn ? 2.0 : 0.1;
+
+        // Automated Cycle Progression & Telemetry Physics
+        if (state.running && !state.coverOpen) {
+          if (state.phase === "drying") {
+            state.remainingSec = Math.max(0, state.remainingSec - dt * state.simSpeed);
+            if (state.remainingSec <= 0) {
+              state.heaterOn = false;
+              state.phase = "uv";
+              state.uvOn = true;
+              state.postTimer = 5.0;
+              showToast("ครบเวลาอบ! ปิดฮีตเตอร์ และเริ่มฆ่าเชื้อ UV-C อัตโนมัติ");
+              syncUI();
+            }
+          } else if (state.phase === "uv") {
+            state.postTimer -= dt;
+            if (state.postTimer <= 0) {
+              state.uvOn = false;
+              state.phase = "mist";
+              state.mistOn = true;
+              state.postTimer = 3.0;
+              showToast("ฆ่าเชื้อ UV-C เสร็จสิ้น • กำลังพ่นละอองน้ำหอม 3 วินาที");
+              syncUI();
+            }
+          } else if (state.phase === "mist") {
+            state.postTimer -= dt;
+            if (state.postTimer <= 0) {
+              state.mistOn = false;
+              state.running = false;
+              state.phase = "done";
+              showToast("เสร็จสิ้นกระบวนการอบ ฆ่าเชื้อ และพ่นน้ำหอมสมบูรณ์!");
+              syncUI();
+            }
+          }
+        }
+
+        telemetryTick += dt;
+        if (telemetryTick >= 0.5) {
+          telemetryTick = 0;
           if (state.heaterOn) {
-            state.temp = Math.min(49.5, state.temp + 0.35);
-            state.humidity = Math.max(38.0, state.humidity - 0.55);
+            state.temp = Math.min(49.2, state.temp + 0.25 * Math.min(4, state.simSpeed * 0.2 + 0.8));
+            state.humidity = Math.max(36.0, state.humidity - 0.4 * Math.min(4, state.simSpeed * 0.2 + 0.8));
           } else {
-            state.temp = Math.max(28.0, state.temp - 0.15);
-            if (!state.mistOn) state.humidity = Math.min(72.0, state.humidity + 0.1);
+            state.temp = Math.max(28.0, state.temp - 0.12);
+            if (!state.mistOn) state.humidity = Math.min(70.0, state.humidity + 0.08);
           }
-          if (state.mistOn && !state.coverOpen) {
-            state.humidity = Math.min(75.0, state.humidity + 0.35);
+          if (state.mistOn) {
+            state.humidity = Math.min(74.0, state.humidity + 0.35);
           }
-          renderUI();
+          syncUI();
         }
 
-        renderScene(elapsed);
-        requestAnimationFrame(animate);
+        renderer.render(scene, camera);
       }
 
-      window.addEventListener("DOMContentLoaded", () => {
-        resizeCanvas();
-        bindEvents();
-        renderUI();
-        requestAnimationFrame(animate);
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
       });
+
+      window.onload = function () {
+        syncUI();
+        animate();
+      };
     })();
   </script>
 </body>
